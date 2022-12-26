@@ -17,7 +17,9 @@ import (
 // обращаю ваше внимание - в этом задании запрещены глобальные переменные
 
 const (
+	limitField    = "limit"
 	defaultLimit  = 5
+	offsetField   = "offset"
 	defaultOffset = 0
 )
 
@@ -137,8 +139,8 @@ func parseSchema(db *sql.DB) (map[string]table, error) {
 
 func initRoutes(db *sql.DB, schema map[string]table) http.Handler {
 	mymux := http.NewServeMux()
-	tableAndIdPattern := regexp.MustCompile(`\A\/\w+\/\d+\/?\z`) //	"/букво-цифры/цифры и, может быть, слэш"
-	tablePattern := regexp.MustCompile(`\A\/\w+\/?\z`)           // "/букво-цифры и, может быть, слэш"
+	tableAndIdPattern := regexp.MustCompile(`\A\/\w+\/\d+\/?\z`)
+	tablePattern := regexp.MustCompile(`\A\/\w+(?:\?\w+=\w+)?(?:&\w+=\w+)?\/?\z`)
 
 	dbHandler := databaseHandler{
 		schema:            schema,
@@ -209,28 +211,8 @@ func (dbh databaseHandler) GetRecords(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//  uri: /$table?limit=5&offset=7
-	limit := defaultLimit
-	limitStr := r.URL.Query().Get("limit")
-	if limitStr != "" {
-		l, err := strconv.Atoi(limitStr)
-		if err != nil {
-			// Просто логгируемся, не крашимся
-			log.Printf("got error parsing to int limit value (%s): %+v\n", limitStr, err)
-		} else {
-			limit = l
-		}
-	}
-
-	offset := defaultOffset
-	offsetStr := r.URL.Query().Get("offset")
-	if offsetStr != "" {
-		o, err := strconv.Atoi(offsetStr)
-		if err != nil {
-			log.Printf("got error parsing to int limit value (%s): %+v\n", offsetStr, err)
-		} else {
-			offset = o
-		}
-	}
+	limit := getIntFieldOrDefault(r, limitField, defaultLimit)
+	offset := getIntFieldOrDefault(r, offsetField, defaultOffset)
 
 	fields := getQueryFields(tableStruct)
 	q := `SELECT %s
@@ -271,6 +253,20 @@ func (dbh databaseHandler) GetRecords(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
 	log.Printf("successfully...")
+}
+
+func getIntFieldOrDefault(r *http.Request, field string, defaultValue int) int {
+	valueStr := r.URL.Query().Get("limit")
+	if valueStr == "" {
+		return defaultValue
+	}
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		// Просто логгируемся, не крашимся
+		log.Printf("got error parsing to int %s value (%s): %+v\n", field, valueStr, err)
+		return defaultValue
+	}
+	return value
 }
 
 func (dbh databaseHandler) InsertRecord(w http.ResponseWriter, r *http.Request) {
@@ -417,8 +413,7 @@ func (dbh databaseHandler) UpdateRecord(w http.ResponseWriter, r *http.Request) 
 	}
 	log.Printf("updating record (id=%d) from table %s", id, tableName)
 
-	err = r.ParseForm()
-	if err != nil {
+	if err = r.ParseForm(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -535,14 +530,14 @@ func initScanDestination(t table) []interface{} {
 func extractSqlVals(tableStruct table, dest []interface{}) map[string]interface{} {
 	unit := make(map[string]interface{})
 	for i, c := range tableStruct.columns {
-		v1 := reflect.ValueOf(dest[i])
-		v2 := reflect.Indirect(v1)
-		v3 := v2.Interface()
-		switch v3 := v3.(type) {
+		reflectPointerToInterface := reflect.ValueOf(dest[i])
+		reflectInterface := reflect.Indirect(reflectPointerToInterface) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
+		goInterface := reflectInterface.Interface()
+		switch goValue := goInterface.(type) {
 		case []byte:
-			unit[c.name] = string(v3)
+			unit[c.name] = string(goValue)
 		default:
-			unit[c.name] = v3
+			unit[c.name] = goValue
 		}
 	}
 	return unit
