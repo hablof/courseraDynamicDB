@@ -41,8 +41,7 @@ type databaseHandler struct {
 }
 
 func NewDbExplorer(db *sql.DB) (http.Handler, error) {
-	err := db.Ping()
-	if err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -55,44 +54,42 @@ func NewDbExplorer(db *sql.DB) (http.Handler, error) {
 	return h, nil
 }
 
-// Получаем мапу[название таблицы]её структура ()
+// Получаем мапу[название таблицы]её структура
 func parseSchema(db *sql.DB) (map[string]table, error) {
 	log.Println("getting tables...")
 	tableRecords, err := db.Query(`SHOW TABLES`)
-
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err = tableRecords.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
 
 	tables := make(map[string]table)
-
 	for tableRecords.Next() {
 		t := table{}
-		err = tableRecords.Scan(&t.name)
-		if err != nil {
+		if err = tableRecords.Scan(&t.name); err != nil {
 			return nil, err
 		}
 		tables[t.name] = t
-	}
-	err = tableRecords.Close()
-	if err != nil {
-		return nil, err
 	}
 
 	log.Println("parsing colunms...")
 	for name := range tables {
 		log.Printf("in table: %s...", name)
 		rows, err := db.Query(fmt.Sprintf("SELECT * FROM `%s`", name))
-
 		if err != nil {
 			return nil, err
 		}
+		defer func() {
+			if err = rows.Close(); err != nil {
+				log.Println(err)
+			}
+		}()
 
 		sqlColumns, err := rows.ColumnTypes()
-		if err != nil {
-			return nil, err
-		}
-		err = rows.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -105,23 +102,22 @@ func parseSchema(db *sql.DB) (map[string]table, error) {
 		//	| id    | int  | NO   | PRI | NULL    | auto_increment |
 		//	+-------+------+------+-----+---------+----------------+
 		row := db.QueryRow(fmt.Sprintf("SHOW COLUMNS FROM %s WHERE `Key` = 'PRI';", name))
-		err = row.Err()
-		if err != nil {
+		if err := row.Err(); err != nil {
 			return nil, err
 		}
+
 		buf := []byte{}
 		waste := new(interface{})
-		err = row.Scan(&buf, waste, waste, waste, waste, waste)
-		if err != nil {
+		if err := row.Scan(&buf, waste, waste, waste, waste, waste); err != nil {
 			return nil, err
 		}
-		PrimaryKey := string(buf)
+		primaryKey := string(buf)
 
-		cols := make([]column, 0)
+		cols := make([]column, 0, len(sqlColumns))
 		for _, ct := range sqlColumns {
 			c := column{}
 			c.name = ct.Name()
-			if c.name == PrimaryKey {
+			if c.name == primaryKey {
 				c.isPrimaryKey = true
 			}
 			nullable, ok := ct.Nullable()
@@ -155,7 +151,6 @@ func initRoutes(db *sql.DB, schema map[string]table) http.Handler {
 }
 
 func (dbh databaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
 	switch {
 	case dbh.tablePattern.MatchString(r.RequestURI):
 		switch r.Method {
@@ -184,12 +179,12 @@ func (dbh databaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (dbh databaseHandler) GetAllTables(w http.ResponseWriter, r *http.Request) {
 	log.Println("get all tables request")
-	tablesList := make([]string, 0)
+	tablesList := make([]string, 0, len(dbh.schema))
 	for n := range dbh.schema {
 		tablesList = append(tablesList, n)
 	}
 
-	b, err := json.Marshal(tablesList)
+	b, err := json.MarshalIndent(tablesList, "", "    ")
 	if err != nil {
 		log.Printf("got error marshaling tables list: %+v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -289,8 +284,7 @@ func (dbh databaseHandler) InsertRecord(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err := r.ParseForm()
-	if err != nil {
+	if err := r.ParseForm(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -305,7 +299,9 @@ func (dbh databaseHandler) InsertRecord(w http.ResponseWriter, r *http.Request) 
 			unit[c.name] = urlVals.Get(c.name)
 		} else {
 			if !c.nullable {
+				log.Println("required fields are missing")
 				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("required fields are missing"))
 				return
 			}
 		}
@@ -356,7 +352,7 @@ func (dbh databaseHandler) GetSingleRecord(w http.ResponseWriter, r *http.Reques
 	log.Printf("getting record (id=%d) from table %s...", id, tableName)
 
 	fields := getQueryFields(tableStruct)
-	PK, err := getPKColumnName(tableStruct)
+	primaryKey, err := getPKColumnName(tableStruct)
 	if err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -365,20 +361,18 @@ func (dbh databaseHandler) GetSingleRecord(w http.ResponseWriter, r *http.Reques
 	q := `SELECT %s
 	FROM %s
 	WHERE %s = ?;`
-	query := fmt.Sprintf(q, fields, tableName, PK)
+	query := fmt.Sprintf(q, fields, tableName, primaryKey)
 
 	row := dbh.db.QueryRow(query, id)
-	err = row.Err()
-	if err != nil {
+	if err := row.Err(); err != nil {
 		log.Printf("unable to get records from sql due to error: %+v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to get records"))
 		return
 	}
-	dest := initScanDestination(tableStruct)
-	err = row.Scan(dest...)
 
-	if err != nil {
+	dest := initScanDestination(tableStruct)
+	if err = row.Scan(dest...); err != nil {
 		if err == sql.ErrNoRows {
 			log.Printf("record (id=%d) not found", id)
 			w.WriteHeader(http.StatusNotFound)
@@ -430,10 +424,8 @@ func (dbh databaseHandler) UpdateRecord(w http.ResponseWriter, r *http.Request) 
 	}
 	urlVals := r.PostForm
 	unit := make(map[string]interface{})
-	PK := ""
 	for _, c := range tableStruct.columns {
 		if c.isPrimaryKey {
-			PK = c.name
 			continue
 		}
 		if urlVals.Has(c.name) {
@@ -441,19 +433,32 @@ func (dbh databaseHandler) UpdateRecord(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	keyValues, sqlVals := getUpdateParams(unit)
+	if len(sqlVals) == 0 {
+		log.Println("required at least one field to update")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("required at least one field to update"))
+		return
+	}
+	primaryKey, err := getPKColumnName(tableStruct)
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	q := `
 	UPDATE %s
 	SET %s
 	WHERE %s = ?;`
-	query := fmt.Sprintf(q, tableName, keyValues, PK)
+	query := fmt.Sprintf(q, tableName, keyValues, primaryKey)
 	sqlVals = append(sqlVals, id)
-	res, err := dbh.db.Exec(query, sqlVals...)
+	result, err := dbh.db.Exec(query, sqlVals...)
 	if err != nil {
 		log.Printf("error on updating values: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	i, err := res.RowsAffected()
+	i, err := result.RowsAffected()
 	if err != nil {
 		log.Printf("error on rowsaffected(): %v", err)
 	}
@@ -486,17 +491,16 @@ func (dbh databaseHandler) DeleteRecord(w http.ResponseWriter, r *http.Request) 
 	}
 	log.Printf("deleting record (id=%d) from table %s", id, tableName)
 
-	PK := ""
-	for _, c := range tableStruct.columns {
-		if c.isPrimaryKey {
-			PK = c.name
-			break
-		}
+	primaryKey, err := getPKColumnName(tableStruct)
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	q := `
 	DELETE FROM %s
 	WHERE %s = ?;`
-	query := fmt.Sprintf(q, tableName, PK)
+	query := fmt.Sprintf(q, tableName, primaryKey)
 
 	res, err := dbh.db.Exec(query, id)
 	if err != nil {
@@ -544,6 +548,7 @@ func extractSqlVals(tableStruct table, dest []interface{}) map[string]interface{
 	return unit
 }
 
+// копипаста функции strings.Join только для моей структуры table
 func getQueryFields(t table) string {
 	switch len(t.columns) {
 	case 0:
@@ -561,10 +566,10 @@ func getQueryFields(t table) string {
 }
 
 func getInsertParams(unit map[string]interface{}) (fieldNames string, placehoderStr string, data []interface{}) {
-	l := len(unit)
-	names := make([]string, 0, l)
-	placehoders := make([]string, 0, l)
-	output := make([]interface{}, 0, l)
+	length := len(unit)
+	names := make([]string, 0, length)
+	placehoders := make([]string, 0, length)
+	output := make([]interface{}, 0, length)
 	for k, v := range unit {
 		names = append(names, k)
 		placehoders = append(placehoders, "?")
@@ -574,9 +579,9 @@ func getInsertParams(unit map[string]interface{}) (fieldNames string, placehoder
 }
 
 func getUpdateParams(unit map[string]interface{}) (fieldPlacehoderStr string, data []interface{}) {
-	l := len(unit)
-	placehoders := make([]string, 0, l)
-	output := make([]interface{}, 0, l)
+	length := len(unit)
+	placehoders := make([]string, 0, length)
+	output := make([]interface{}, 0, length)
 	for k, v := range unit {
 		placehoders = append(placehoders, fmt.Sprintf("%s = ?", k))
 		output = append(output, v)

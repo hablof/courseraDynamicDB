@@ -5,12 +5,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var (
+const (
 	// DSN это соединение с базой
 	// вы можете изменить этот на тот который вам нужен
 	// docker run -p 3366:3306 -v $(PWD):/docker-entrypoint-initdb.d -e MYSQL_ROOT_PASSWORD=1234 -e MYSQL_DATABASE=golang -d mysql
@@ -21,18 +22,21 @@ var (
 func main() {
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
 	defer db.Close()
 	err = db.Ping() // вот тут будет первое подключение к базе
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
 	handler, err := NewDbExplorer(db)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
 	fmt.Println("starting server at :8082")
