@@ -17,8 +17,9 @@ import (
 // обращаю ваше внимание - в этом задании запрещены глобальные переменные
 
 const (
-	limitField    = "limit"
-	defaultLimit  = 5
+	limitField   = "limit"
+	defaultLimit = 5
+
 	offsetField   = "offset"
 	defaultOffset = 0
 )
@@ -58,7 +59,86 @@ func NewDbExplorer(db *sql.DB) (http.Handler, error) {
 
 // Получаем мапу[название таблицы]её структура
 func parseSchema(db *sql.DB) (map[string]table, error) {
-	log.Println("getting tables...")
+	tables, err := getTables(db)
+	if err != nil {
+		return nil, err
+	}
+
+	for tableName := range tables {
+		cols, err := getColumns(tableName, db)
+		if err != nil {
+			return nil, err
+		}
+		t := tables[tableName]
+		t.columns = cols
+		tables[tableName] = t
+	}
+	return tables, nil
+}
+
+func getColumns(tableName string, db *sql.DB) ([]column, error) {
+	log.Printf("parsing colunms in table: %s", tableName)
+	rows, err := db.Query(fmt.Sprintf("SELECT * FROM `%s` LIMIT 1", tableName))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	sqlColumns, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
+
+	primaryKey, err := getPrimaryKeyFieldName(db, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	cols := make([]column, 0, len(sqlColumns))
+	for _, ct := range sqlColumns {
+		c := column{}
+		c.name = ct.Name()
+		if c.name == primaryKey {
+			c.isPrimaryKey = true
+		}
+		nullable, ok := ct.Nullable()
+		if !ok {
+			return nil, errors.New("shitty driver")
+		}
+		c.nullable = nullable
+		c.columnType = ct.ScanType()
+		cols = append(cols, c)
+	}
+	return cols, nil
+}
+
+func getPrimaryKeyFieldName(db *sql.DB, tableName string) (string, error) {
+
+	//	Получаем информацию о столбце, который язляется 'PRIMARY KEY'
+	//	Например
+	//	+-------+------+------+-----+---------+----------------+
+	//	| Field | Type | Null | Key | Default | Extra          |
+	//	+-------+------+------+-----+---------+----------------+
+	//	| id    | int  | NO   | PRI | NULL    | auto_increment |
+	//	+-------+------+------+-----+---------+----------------+
+	row := db.QueryRow(fmt.Sprintf("SHOW COLUMNS FROM %s WHERE `Key` = 'PRI';", tableName))
+	if err := row.Err(); err != nil {
+		return "", err
+	}
+	primaryKeyByteSlice := []byte{}
+	waste := new(interface{})
+	if err := row.Scan(&primaryKeyByteSlice, waste, waste, waste, waste, waste); err != nil {
+		return "", err
+	}
+	return string(primaryKeyByteSlice), nil
+}
+
+func getTables(db *sql.DB) (map[string]table, error) {
+	log.Println("getting tables")
 	tableRecords, err := db.Query(`SHOW TABLES`)
 	if err != nil {
 		return nil, err
@@ -70,69 +150,13 @@ func parseSchema(db *sql.DB) (map[string]table, error) {
 	}()
 
 	tables := make(map[string]table)
+
 	for tableRecords.Next() {
 		t := table{}
 		if err = tableRecords.Scan(&t.name); err != nil {
 			return nil, err
 		}
 		tables[t.name] = t
-	}
-
-	log.Println("parsing colunms...")
-	for name := range tables {
-		log.Printf("in table: %s...", name)
-		rows, err := db.Query(fmt.Sprintf("SELECT * FROM `%s`", name))
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			if err = rows.Close(); err != nil {
-				log.Println(err)
-			}
-		}()
-
-		sqlColumns, err := rows.ColumnTypes()
-		if err != nil {
-			return nil, err
-		}
-
-		//	Получаем информацию о столбце, который язляется 'PRIMARY KEY'
-		//	Например
-		//	+-------+------+------+-----+---------+----------------+
-		//	| Field | Type | Null | Key | Default | Extra          |
-		//	+-------+------+------+-----+---------+----------------+
-		//	| id    | int  | NO   | PRI | NULL    | auto_increment |
-		//	+-------+------+------+-----+---------+----------------+
-		row := db.QueryRow(fmt.Sprintf("SHOW COLUMNS FROM %s WHERE `Key` = 'PRI';", name))
-		if err := row.Err(); err != nil {
-			return nil, err
-		}
-
-		buf := []byte{}
-		waste := new(interface{})
-		if err := row.Scan(&buf, waste, waste, waste, waste, waste); err != nil {
-			return nil, err
-		}
-		primaryKey := string(buf)
-
-		cols := make([]column, 0, len(sqlColumns))
-		for _, ct := range sqlColumns {
-			c := column{}
-			c.name = ct.Name()
-			if c.name == primaryKey {
-				c.isPrimaryKey = true
-			}
-			nullable, ok := ct.Nullable()
-			if !ok {
-				return nil, errors.New("shitty driver")
-			}
-			c.nullable = nullable
-			c.columnType = ct.ScanType()
-			cols = append(cols, c)
-		}
-		t := tables[name]
-		t.columns = cols
-		tables[name] = t
 	}
 	return tables, nil
 }
@@ -252,7 +276,7 @@ func (dbh databaseHandler) GetRecords(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
-	log.Printf("successfully...")
+	log.Printf("successfully")
 }
 
 func getIntFieldOrDefault(r *http.Request, field string, defaultValue int) int {
@@ -345,7 +369,7 @@ func (dbh databaseHandler) GetSingleRecord(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Printf("getting record (id=%d) from table %s...", id, tableName)
+	log.Printf("getting record (id=%d) from table %s", id, tableName)
 
 	fields := getQueryFields(tableStruct)
 	primaryKey, err := getPKColumnName(tableStruct)
@@ -393,7 +417,7 @@ func (dbh databaseHandler) GetSingleRecord(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
-	log.Printf("successfully...")
+	log.Printf("successfully")
 }
 
 func (dbh databaseHandler) UpdateRecord(w http.ResponseWriter, r *http.Request) {
