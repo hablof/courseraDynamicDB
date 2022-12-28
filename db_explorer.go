@@ -24,12 +24,14 @@ const (
 	defaultOffset = 0
 )
 
-type table struct {
+type Schema map[string]Table
+
+type Table struct {
 	name    string
-	columns []column
+	columns []Column
 }
 
-type column struct {
+type Column struct {
 	name         string
 	columnType   reflect.Type
 	nullable     bool
@@ -37,7 +39,7 @@ type column struct {
 }
 
 type databaseHandler struct {
-	schema            map[string]table
+	schema            map[string]Table
 	db                *sql.DB
 	tableAndIdPattern *regexp.Regexp
 	tablePattern      *regexp.Regexp
@@ -58,7 +60,7 @@ func NewDbExplorer(db *sql.DB) (http.Handler, error) {
 }
 
 // Получаем мапу[название таблицы]её структура
-func parseSchema(db *sql.DB) (map[string]table, error) {
+func parseSchema(db *sql.DB) (map[string]Table, error) {
 	tables, err := getTables(db)
 	if err != nil {
 		return nil, err
@@ -76,7 +78,7 @@ func parseSchema(db *sql.DB) (map[string]table, error) {
 	return tables, nil
 }
 
-func getColumns(tableName string, db *sql.DB) ([]column, error) {
+func getColumns(tableName string, db *sql.DB) ([]Column, error) {
 	log.Printf("parsing colunms in table: %s", tableName)
 	rows, err := db.Query(fmt.Sprintf("SELECT * FROM `%s` LIMIT 1", tableName))
 	if err != nil {
@@ -98,9 +100,9 @@ func getColumns(tableName string, db *sql.DB) ([]column, error) {
 		return nil, err
 	}
 
-	cols := make([]column, 0, len(sqlColumns))
+	cols := make([]Column, 0, len(sqlColumns))
 	for _, ct := range sqlColumns {
-		c := column{}
+		c := Column{}
 		c.name = ct.Name()
 		if c.name == primaryKey {
 			c.isPrimaryKey = true
@@ -137,7 +139,7 @@ func getPrimaryKeyFieldName(db *sql.DB, tableName string) (string, error) {
 	return string(primaryKeyByteSlice), nil
 }
 
-func getTables(db *sql.DB) (map[string]table, error) {
+func getTables(db *sql.DB) (map[string]Table, error) {
 	log.Println("getting tables")
 	tableRecords, err := db.Query(`SHOW TABLES`)
 	if err != nil {
@@ -149,10 +151,10 @@ func getTables(db *sql.DB) (map[string]table, error) {
 		}
 	}()
 
-	tables := make(map[string]table)
+	tables := make(map[string]Table)
 
 	for tableRecords.Next() {
-		t := table{}
+		t := Table{}
 		if err = tableRecords.Scan(&t.name); err != nil {
 			return nil, err
 		}
@@ -161,7 +163,7 @@ func getTables(db *sql.DB) (map[string]table, error) {
 	return tables, nil
 }
 
-func initRoutes(db *sql.DB, schema map[string]table) http.Handler {
+func initRoutes(db *sql.DB, schema map[string]Table) http.Handler {
 	mymux := http.NewServeMux()
 	tableAndIdPattern := regexp.MustCompile(`\A\/\w+\/\d+\/?\z`)
 	tablePattern := regexp.MustCompile(`\A\/\w+(?:\?\w+=\w+)?(?:&\w+=\w+)?\/?\z`)
@@ -543,7 +545,7 @@ func (dbh databaseHandler) DeleteRecord(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte(fmt.Sprintf("deleted record id %d", id)))
 }
 
-func initScanDestination(t table) []interface{} {
+func initScanDestination(t Table) []interface{} {
 	a := make([]interface{}, len(t.columns))
 	for i := range a {
 		a[i] = new(interface{})
@@ -551,7 +553,7 @@ func initScanDestination(t table) []interface{} {
 	return a
 }
 
-func extractSqlVals(tableStruct table, dest []interface{}) map[string]interface{} {
+func extractSqlVals(tableStruct Table, dest []interface{}) map[string]interface{} {
 	unit := make(map[string]interface{})
 	for i, c := range tableStruct.columns {
 		reflectPointerToInterface := reflect.ValueOf(dest[i])
@@ -568,7 +570,7 @@ func extractSqlVals(tableStruct table, dest []interface{}) map[string]interface{
 }
 
 // копипаста функции strings.Join только для моей структуры table
-func getQueryFields(t table) string {
+func getQueryFields(t Table) string {
 	switch len(t.columns) {
 	case 0:
 		return ""
@@ -608,7 +610,7 @@ func getUpdateParams(unit map[string]interface{}) (fieldPlacehoderStr string, da
 	return strings.Join(placehoders, ", "), output
 }
 
-func getPKColumnName(t table) (string, error) {
+func getPKColumnName(t Table) (string, error) {
 	for _, c := range t.columns {
 		if c.isPrimaryKey {
 			return c.name, nil
