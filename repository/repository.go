@@ -12,11 +12,11 @@ type Explorer interface {
 }
 
 type RecordManager interface {
-	GetAllRecords(tableName string, limit int, offset int) (data []map[string]interface{}, err error)
-	GetById(tableName string, id int) (data map[string]interface{}, err error)
-	Create(tableName string, data map[string]interface{}) (lastInsertedId int, err error)
-	UpdateById(tableName string, id int, data map[string]interface{}) (err error)
-	DeleteById(tableName string, id int) (err error)
+	GetAllRecords(table internal.Table, limit int, offset int) (data []map[string]interface{}, err error)
+	GetById(table internal.Table, id int) (data map[string]interface{}, err error)
+	Create(table internal.Table, data map[string]interface{}) (lastInsertedId int, err error)
+	UpdateById(table internal.Table, primaryKey string, id int, data map[string]interface{}) (err error)
+	DeleteById(table internal.Table, primaryKey string, id int) (err error)
 }
 
 type Repository struct {
