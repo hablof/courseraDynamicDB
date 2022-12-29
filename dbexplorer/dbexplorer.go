@@ -13,8 +13,8 @@ type DBexplorer struct {
 	SchemeParser
 }
 
-func NewDbExplorer(r repository.Repository) *DBexplorer {
+func NewDbExplorer(r *repository.Repository) *DBexplorer {
 	return &DBexplorer{
-		SchemeParser: NewSchemeParser(r),
+		SchemeParser: newSchemeParser(r),
 	}
 }

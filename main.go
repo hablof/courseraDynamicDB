@@ -5,6 +5,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"hw6coursera/dbexplorer"
+	"hw6coursera/repository"
+	"hw6coursera/router"
+	"hw6coursera/service"
 	"log"
 	"net/http"
 
@@ -27,18 +31,20 @@ func main() {
 	}
 
 	defer db.Close()
-	err = db.Ping() // вот тут будет первое подключение к базе
-	if err != nil {
-		log.Println(err)
+	// err = db.Ping() // вот тут будет первое подключение к базе
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return
+	// }
+	repo := repository.NewRepository(db)
+	explorer := dbexplorer.NewDbExplorer(repo)
+	service := service.NewService(repo, explorer)
+	if err := service.InitSchema(); err != nil {
+		log.Printf("failed to init database shcema: %v", err)
 		return
 	}
-
-	handler, err := NewDbExplorer(db)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	router := router.NewRouter(service)
 
 	fmt.Println("starting server at :8082")
-	http.ListenAndServe(":8082", handler)
+	http.ListenAndServe(":8082", router)
 }

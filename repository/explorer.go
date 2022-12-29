@@ -9,7 +9,7 @@ import (
 )
 
 type dbExplorer struct {
-	db sql.DB
+	db *sql.DB
 }
 
 // GetColumns implements Explorer
@@ -76,7 +76,7 @@ func (e *dbExplorer) GetTableNames() ([]string, error) {
 	return tableNames, nil
 }
 
-func newExplorer(db sql.DB) *dbExplorer {
+func newExplorer(db *sql.DB) *dbExplorer {
 	return &dbExplorer{
 		db: db,
 	}

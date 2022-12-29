@@ -1,1 +1,0 @@
-docker run -p 3366:3306 -v C:/Users/chiller/Desktop/'Go lag'/hw6_db_explorer/sample_db.sql:/docker-entrypoint-initdb.d/sample_db.sql -e MYSQL_ROOT_PASSWORD=1234 -e MYSQL_DATABASE=golang -d mysql

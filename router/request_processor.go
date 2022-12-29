@@ -30,6 +30,7 @@ func (rp *requestProcessor) DeleteRecord(w http.ResponseWriter, r *http.Request)
 	if err := rp.service.DeleteById(tableName, id); err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("deleted record id %d", id)))
@@ -41,6 +42,7 @@ func (rp *requestProcessor) GetAllTables(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to get tables"))
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -56,7 +58,8 @@ func (rp *requestProcessor) GetRecords(w http.ResponseWriter, r *http.Request) {
 	data, err := rp.service.GetAllRecords(tableName, limit, offset)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("unable to get tables"))
+		w.Write([]byte("unable to get records"))
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -92,6 +95,7 @@ func (rp *requestProcessor) GetSingleRecord(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to get tables"))
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)

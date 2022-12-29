@@ -27,13 +27,14 @@ func (s *SchemeParserExplorer) ParseSchema() (internal.Schema, error) {
 		if err != nil {
 			return nil, err
 		}
+		t.Name = tableName
 		t.Columns = cols
 		sch[tableName] = t
 	}
 	return sch, nil
 }
 
-func NewSchemeParser(r repository.Repository) *SchemeParserExplorer {
+func newSchemeParser(r *repository.Repository) *SchemeParserExplorer {
 	return &SchemeParserExplorer{
 		repoExplorer: r.Explorer,
 	}

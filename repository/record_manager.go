@@ -10,7 +10,7 @@ import (
 )
 
 type recordManager struct {
-	db sql.DB
+	db *sql.DB
 }
 
 // Create implements RecordManager
@@ -41,7 +41,8 @@ func (rm *recordManager) Create(table internal.Table, data map[string]interface{
 // DeleteById implements RecordManager
 func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id int) (err error) {
 	q := `
-	DELETE FROM %s
+	DELETE
+	FROM %s
 	WHERE %s = ?;`
 	query := fmt.Sprintf(q, table.Name, primaryKey)
 
@@ -65,7 +66,8 @@ func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id 
 // GetAllRecords implements RecordManager
 func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset int) (data []map[string]interface{}, err error) {
 	fields := getQueryFields(table)
-	q := `SELECT %s
+	q := `
+	SELECT %s
 	FROM %s
 	LIMIT ?
 	OFFSET ?;`
@@ -93,13 +95,10 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 }
 
 // GetById implements RecordManager
-func (rm *recordManager) GetById(table internal.Table, id int) (data map[string]interface{}, err error) {
+func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int) (data map[string]interface{}, err error) {
 	fields := getQueryFields(table)
-	primaryKey, err := getPKColumnName(table)
-	if err != nil {
-		return nil, err
-	}
-	q := `SELECT %s
+	q := `
+	SELECT %s
 	FROM %s
 	WHERE %s = ?;`
 	query := fmt.Sprintf(q, fields, table.Name, primaryKey)
@@ -151,7 +150,7 @@ func (rm *recordManager) UpdateById(table internal.Table, primaryKey string, id 
 	return nil
 }
 
-func newRecordManager(db sql.DB) *recordManager {
+func newRecordManager(db *sql.DB) *recordManager {
 	return &recordManager{
 		db: db,
 	}
