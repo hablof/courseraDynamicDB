@@ -5,6 +5,8 @@ import (
 	"hw6coursera/repository"
 )
 
+//go:generate mockgen -source=service.go -destination=mocks/mock.go
+
 type RecordService interface {
 	GetAllTables() (data []byte, err error)
 	GetAllRecords(tableName string, limit int, offset int) (data []byte, err error)

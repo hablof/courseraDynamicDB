@@ -7,12 +7,12 @@ import (
 )
 
 type RequestProcessor interface {
-	GetRecords(w http.ResponseWriter, r *http.Request)
-	InsertRecord(w http.ResponseWriter, r *http.Request)
-	GetSingleRecord(w http.ResponseWriter, r *http.Request)
-	UpdateRecord(w http.ResponseWriter, r *http.Request)
-	DeleteRecord(w http.ResponseWriter, r *http.Request)
-	GetAllTables(w http.ResponseWriter, r *http.Request)
+	getRecords(w http.ResponseWriter, r *http.Request)
+	insertRecord(w http.ResponseWriter, r *http.Request)
+	getSingleRecord(w http.ResponseWriter, r *http.Request)
+	updateRecord(w http.ResponseWriter, r *http.Request)
+	deleteRecord(w http.ResponseWriter, r *http.Request)
+	getAllTables(w http.ResponseWriter, r *http.Request)
 }
 
 type Router struct {
@@ -37,24 +37,24 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case router.tablePattern.MatchString(r.RequestURI):
 		switch r.Method {
 		case "GET":
-			router.GetRecords(w, r)
+			router.getRecords(w, r)
 		case "PUT":
-			router.InsertRecord(w, r)
+			router.insertRecord(w, r)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	case router.tableAndIdPattern.MatchString(r.RequestURI):
 		switch r.Method {
 		case "GET":
-			router.GetSingleRecord(w, r)
+			router.getSingleRecord(w, r)
 		case "PUT":
-			router.UpdateRecord(w, r)
+			router.updateRecord(w, r)
 		case "DELETE":
-			router.DeleteRecord(w, r)
+			router.deleteRecord(w, r)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	default:
-		router.GetAllTables(w, r)
+		router.getAllTables(w, r)
 	}
 }

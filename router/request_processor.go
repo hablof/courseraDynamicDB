@@ -19,7 +19,7 @@ type requestProcessor struct {
 }
 
 // DeleteRecord implements RequestProcessor
-func (rp *requestProcessor) DeleteRecord(w http.ResponseWriter, r *http.Request) {
+func (rp *requestProcessor) deleteRecord(w http.ResponseWriter, r *http.Request) {
 	path := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
 	tableName := path[0]
 	id, err := strconv.Atoi(path[1])
@@ -37,7 +37,7 @@ func (rp *requestProcessor) DeleteRecord(w http.ResponseWriter, r *http.Request)
 }
 
 // GetAllTables implements RequestProcessor
-func (rp *requestProcessor) GetAllTables(w http.ResponseWriter, r *http.Request) {
+func (rp *requestProcessor) getAllTables(w http.ResponseWriter, r *http.Request) {
 	data, err := rp.service.RecordService.GetAllTables()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -51,7 +51,7 @@ func (rp *requestProcessor) GetAllTables(w http.ResponseWriter, r *http.Request)
 }
 
 // GetRecords implements RequestProcessor
-func (rp *requestProcessor) GetRecords(w http.ResponseWriter, r *http.Request) {
+func (rp *requestProcessor) getRecords(w http.ResponseWriter, r *http.Request) {
 	tableName := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/"), "/")
 	limit := getIntFieldOrDefault(r, limitField, service.DefaultLimit)
 	offset := getIntFieldOrDefault(r, offsetField, service.DefaultOffset)
@@ -82,7 +82,7 @@ func getIntFieldOrDefault(r *http.Request, field string, defaultValue int) int {
 }
 
 // GetSingleRecord implements RequestProcessor
-func (rp *requestProcessor) GetSingleRecord(w http.ResponseWriter, r *http.Request) {
+func (rp *requestProcessor) getSingleRecord(w http.ResponseWriter, r *http.Request) {
 	path := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
 	tableName := path[0]
 	id, err := strconv.Atoi(path[1])
@@ -105,7 +105,7 @@ func (rp *requestProcessor) GetSingleRecord(w http.ResponseWriter, r *http.Reque
 }
 
 // InsertRecord implements RequestProcessor
-func (rp *requestProcessor) InsertRecord(w http.ResponseWriter, r *http.Request) {
+func (rp *requestProcessor) insertRecord(w http.ResponseWriter, r *http.Request) {
 	tableName := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/"), "/")
 
 	if err := r.ParseForm(); err != nil {
@@ -130,7 +130,7 @@ func (rp *requestProcessor) InsertRecord(w http.ResponseWriter, r *http.Request)
 }
 
 // UpdateRecord implements RequestProcessor
-func (rp *requestProcessor) UpdateRecord(w http.ResponseWriter, r *http.Request) {
+func (rp *requestProcessor) updateRecord(w http.ResponseWriter, r *http.Request) {
 	path := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
 	tableName := path[0]
 	id, err := strconv.Atoi(path[1])
