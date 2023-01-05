@@ -27,7 +27,10 @@ func (rp *requestProcessor) deleteRecord(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := rp.service.DeleteById(tableName, id); err != nil {
+	if err := rp.service.DeleteById(tableName, id); err == service.ErrRecordNotFound || err == service.ErrTableNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -56,7 +59,10 @@ func (rp *requestProcessor) getRecords(w http.ResponseWriter, r *http.Request) {
 	limit := getIntFieldOrDefault(r, limitField, service.DefaultLimit)
 	offset := getIntFieldOrDefault(r, offsetField, service.DefaultOffset)
 	data, err := rp.service.GetAllRecords(tableName, limit, offset)
-	if err != nil {
+	if err == service.ErrTableNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to get records"))
 		return
@@ -65,20 +71,6 @@ func (rp *requestProcessor) getRecords(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application-json")
 	w.Write(data)
-}
-
-func getIntFieldOrDefault(r *http.Request, field string, defaultValue int) int {
-	valueStr := r.URL.Query().Get("limit")
-	if valueStr == "" {
-		return defaultValue
-	}
-	value, err := strconv.Atoi(valueStr)
-	if err != nil {
-		// Просто логгируемся, не крашимся
-		log.Printf("got error parsing to int %s value (%s): %+v\n", field, valueStr, err)
-		return defaultValue
-	}
-	return value
 }
 
 // GetSingleRecord implements RequestProcessor
@@ -92,9 +84,12 @@ func (rp *requestProcessor) getSingleRecord(w http.ResponseWriter, r *http.Reque
 	}
 
 	data, err := rp.service.GetById(tableName, id)
-	if err != nil {
+	if err == service.ErrRecordNotFound || err == service.ErrTableNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("unable to get tables"))
+		w.Write([]byte("unable to service"))
 		return
 	}
 
@@ -150,7 +145,10 @@ func (rp *requestProcessor) updateRecord(w http.ResponseWriter, r *http.Request)
 		unit[k] = urlVals.Get(k)
 	}
 
-	if err := rp.service.UpdateById(tableName, id, unit); err != nil {
+	if err := rp.service.UpdateById(tableName, id, unit); err == service.ErrRecordNotFound || err == service.ErrTableNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to insert record"))
 		return
@@ -163,4 +161,18 @@ func newRequectProcessor(s *service.Service) *requestProcessor {
 	return &requestProcessor{
 		service: s,
 	}
+}
+
+func getIntFieldOrDefault(r *http.Request, field string, defaultValue int) int {
+	valueStr := r.URL.Query().Get("limit")
+	if valueStr == "" {
+		return defaultValue
+	}
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		// Просто логгируемся, не крашимся
+		log.Printf("got error parsing to int %s value (%s): %+v\n", field, valueStr, err)
+		return defaultValue
+	}
+	return value
 }

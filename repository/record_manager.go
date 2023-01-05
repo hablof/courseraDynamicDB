@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+var ErrRowNotFound = fmt.Errorf("row not found")
+
 type recordManager struct {
 	db *sql.DB
 }
@@ -56,7 +58,7 @@ func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id 
 	}
 
 	if i == 0 {
-		return fmt.Errorf("no rows affected")
+		return ErrRowNotFound
 	} else if i > 1 {
 		log.Println("affected more then 1 row")
 	}
@@ -111,7 +113,7 @@ func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int
 	dest := initScanDestination(table)
 	if err = row.Scan(dest...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("record not found")
+			return nil, ErrRowNotFound
 		}
 		return nil, err
 	}
@@ -143,7 +145,7 @@ func (rm *recordManager) UpdateById(table internal.Table, primaryKey string, id 
 	}
 
 	if i == 0 {
-		return fmt.Errorf("no rows affected")
+		return ErrRowNotFound
 	} else if i > 1 {
 		return fmt.Errorf("affected more then 1 row")
 	}
@@ -211,7 +213,7 @@ func extractSqlVals(tableStruct internal.Table, dest []interface{}) map[string]i
 		reflectPointerToInterface := reflect.ValueOf(dest[i])
 		reflectInterface := reflect.Indirect(reflectPointerToInterface) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
 		goInterface := reflectInterface.Interface()
-		switch goValue := goInterface.(type) {
+		switch goValue := goInterface.(type) { //байты преобразуем в строку, остальное просто отдаём
 		case []byte:
 			unit[c.Name] = string(goValue)
 		default:
@@ -221,11 +223,11 @@ func extractSqlVals(tableStruct internal.Table, dest []interface{}) map[string]i
 	return unit
 }
 
-func getPKColumnName(t internal.Table) (string, error) {
-	for _, c := range t.Columns {
-		if c.IsPrimaryKey {
-			return c.Name, nil
-		}
-	}
-	return "", fmt.Errorf("there is no primary key column")
-}
+// func getPKColumnName(t internal.Table) (string, error) {
+// 	for _, c := range t.Columns {
+// 		if c.IsPrimaryKey {
+// 			return c.Name, nil
+// 		}
+// 	}
+// 	return "", fmt.Errorf("there is no primary key column")
+// }

@@ -14,6 +14,11 @@ const (
 	DefaultOffset = 0
 )
 
+var (
+	ErrTableNotFound  = fmt.Errorf("table not found")
+	ErrRecordNotFound = fmt.Errorf("record not found")
+)
+
 type RecordManager struct {
 	repo   repository.RecordManager
 	dbe    dbexplorer.SchemeParser
@@ -50,7 +55,7 @@ func (r *RecordManager) Create(tableName string, data map[string]string) (int, e
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
-		return 0, fmt.Errorf("table %s not found", tableName)
+		return 0, ErrTableNotFound
 	}
 
 	insertedId, err := r.repo.Create(tableStruct, unit)
@@ -68,7 +73,7 @@ func (r *RecordManager) DeleteById(tableName string, id int) error {
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
-		return fmt.Errorf("table %s not found", tableName)
+		return ErrTableNotFound
 	}
 
 	primaryKey, err := getPKColumnName(tableStruct)
@@ -77,7 +82,9 @@ func (r *RecordManager) DeleteById(tableName string, id int) error {
 		return err
 	}
 
-	if err := r.repo.DeleteById(tableStruct, primaryKey, id); err != nil {
+	if err := r.repo.DeleteById(tableStruct, primaryKey, id); err == repository.ErrRowNotFound {
+		return ErrRecordNotFound
+	} else if err != nil {
 		log.Printf("unable to delete record: %+v", err)
 		return err
 	}
@@ -91,7 +98,7 @@ func (r *RecordManager) GetAllRecords(tableName string, limit int, offset int) (
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
-		return nil, fmt.Errorf("table %s not found", tableName)
+		return nil, ErrTableNotFound
 	}
 
 	data, err := r.repo.GetAllRecords(tableStruct, limit, offset)
@@ -113,7 +120,7 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
-		return nil, fmt.Errorf("table %s not found", tableName)
+		return nil, ErrTableNotFound
 	}
 
 	log.Printf("getting record (id=%d) from table %s", id, tableName)
@@ -125,7 +132,9 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 	}
 
 	data, err := r.repo.GetById(tableStruct, primaryKey, id)
-	if err != nil {
+	if err == repository.ErrRowNotFound {
+		return nil, ErrRecordNotFound
+	} else if err != nil {
 		log.Printf("unable to get record dy id: %+v", err)
 		return nil, err
 	}
@@ -150,7 +159,7 @@ func (r *RecordManager) UpdateById(tableName string, id int, data map[string]str
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
-		return fmt.Errorf("table %s not found", tableName)
+		return ErrTableNotFound
 	}
 
 	primaryKey, err := getPKColumnName(tableStruct)
@@ -159,7 +168,9 @@ func (r *RecordManager) UpdateById(tableName string, id int, data map[string]str
 		return err
 	}
 
-	if err := r.repo.UpdateById(tableStruct, primaryKey, id, unit); err != nil {
+	if err := r.repo.UpdateById(tableStruct, primaryKey, id, unit); err == repository.ErrRowNotFound {
+		return ErrRecordNotFound
+	} else if err != nil {
 		log.Printf("unable to update record by id: %+v", err)
 		return err
 	}

@@ -5,6 +5,8 @@ import (
 	"hw6coursera/internal"
 )
 
+//go:generate mockgen -source=repository.go -destination=mocks/mock.go
+
 type Explorer interface {
 	//Connect(driverName string, dataSourceName string) (sql.DB, error)
 	GetTableNames() ([]string, error)
