@@ -46,3 +46,8 @@ const (
 	"updated": "Zhonstantin Kiharev"
 }`
 )
+
+var (
+	_ string = bigJSON
+	_ string = smallJSON
+)

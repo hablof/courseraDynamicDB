@@ -6,6 +6,7 @@ import (
 	"hw6coursera/service"
 	mock_service "hw6coursera/service/mocks"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -181,12 +182,12 @@ func TestRouter_getRecords(t *testing.T) {
 		},
 		{
 			name:              "limit & offset check",
-			urlPath:           "/table?limit=1&offset=1",
+			urlPath:           "/table?limit=1&offset=2",
 			expectedSatusCode: 200,
 			expectedBody:      smallJSON,
 			tableName:         "table",
 			limit:             1,
-			offset:            1,
+			offset:            2,
 			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, limit int, offset int) {
 				ms.EXPECT().GetAllRecords(tableName, limit, offset).Return([]byte(smallJSON), nil)
 			},
@@ -319,6 +320,231 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			assert.Equal(t, tc.expectedSatusCode, w.Result().StatusCode)
 			assert.Equal(t, tc.expectedBody, w.Body.String())
 
+		})
+	}
+}
+
+func TestRouter_updateRecord(t *testing.T) {
+	testCases := []struct {
+		name              string
+		urlPath           string
+		expectedSatusCode int
+		expectedBody      string
+		tableName         string
+		id                int
+		updateData        map[string]string
+		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string)
+	}{
+		{
+			name:              "OK",
+			urlPath:           "/table/3",
+			expectedSatusCode: 200,
+			expectedBody:      "updated record id 3",
+			tableName:         "table",
+			id:                3,
+			updateData:        map[string]string{"updating field": "new data"},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
+				ms.EXPECT().UpdateById(tableName, id, data).Return(nil)
+			},
+		},
+		{
+			name:              "missing form body",
+			urlPath:           "/table/3",
+			expectedSatusCode: 500,
+			expectedBody:      "unable to update record",
+			tableName:         "table",
+			id:                3,
+			updateData:        map[string]string{},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
+				ms.EXPECT().UpdateById(tableName, id, data).Return(fmt.Errorf("missing data to update"))
+			},
+		},
+		{
+			name:              "bad id",
+			urlPath:           "/table/bad_id",
+			expectedSatusCode: 500,
+			expectedBody:      "",
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := gomock.NewController(t)
+			defer c.Finish()
+
+			recordService := mock_service.NewMockRecordService(c)
+			tc.mockBehaviour(recordService, tc.tableName, tc.id, tc.updateData)
+
+			servicies := &service.Service{
+				RecordService: recordService,
+			}
+
+			router := NewRouter(servicies)
+			w := httptest.NewRecorder()
+			params := url.Values{}
+			for k, v := range tc.updateData {
+				params.Add(k, v)
+			}
+
+			r := httptest.NewRequest("POST", tc.urlPath, bytes.NewBufferString(params.Encode()))
+			r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			router.updateRecord(w, r)
+
+			assert.Equal(t, tc.expectedSatusCode, w.Result().StatusCode)
+			assert.Equal(t, tc.expectedBody, w.Body.String())
+
+		})
+	}
+}
+
+func TestRouter_insertRecord(t *testing.T) {
+	testCases := []struct {
+		name              string
+		urlPath           string
+		expectedSatusCode int
+		expectedBody      string
+		tableName         string
+		lastInsertId      int
+		data              map[string]string
+		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, data map[string]string)
+	}{
+		{
+			name:              "OK",
+			urlPath:           "/table",
+			expectedSatusCode: 200,
+			expectedBody:      "last insert id 3",
+			tableName:         "table",
+			lastInsertId:      3,
+			data:              map[string]string{"updating field": "new data"},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
+				ms.EXPECT().Create(tableName, data).Return(3, nil)
+			},
+		},
+		{
+			name:              "not found (table)",
+			urlPath:           "/table",
+			expectedSatusCode: 404,
+			expectedBody:      "",
+			tableName:         "table",
+			lastInsertId:      0,
+			data:              map[string]string{},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
+				ms.EXPECT().Create(tableName, data).Return(0, service.ErrTableNotFound)
+			},
+		},
+		{
+			name:              "service error",
+			urlPath:           "/table",
+			expectedSatusCode: 500,
+			expectedBody:      "unable to insert record",
+			tableName:         "table",
+			lastInsertId:      0,
+			data:              map[string]string{},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
+				ms.EXPECT().Create(tableName, data).Return(0, fmt.Errorf("some service error"))
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := gomock.NewController(t)
+			defer c.Finish()
+
+			recordService := mock_service.NewMockRecordService(c)
+			tc.mockBehaviour(recordService, tc.tableName, tc.data)
+
+			servicies := &service.Service{
+				RecordService: recordService,
+			}
+
+			router := NewRouter(servicies)
+			w := httptest.NewRecorder()
+			params := url.Values{}
+			for k, v := range tc.data {
+				params.Add(k, v)
+			}
+
+			r := httptest.NewRequest("PUT", tc.urlPath, bytes.NewBufferString(params.Encode()))
+			r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			router.insertRecord(w, r)
+
+			assert.Equal(t, tc.expectedSatusCode, w.Result().StatusCode)
+			assert.Equal(t, tc.expectedBody, w.Body.String())
+
+		})
+	}
+
+}
+
+func Test_getIntFieldOrDefault(t *testing.T) {
+	testCases := []struct {
+		name         string
+		params       map[string]string
+		defaultValue int
+		targetField  string
+		exeptedValue int
+	}{
+		{
+			name:         "got 5",
+			params:       map[string]string{"field1": "notIntValue", "field2": "5", "field3": "17"},
+			defaultValue: 1,
+			targetField:  "field2",
+			exeptedValue: 5,
+		},
+		{
+			name:         "got default due field missing",
+			params:       map[string]string{"field1": "notIntValue", "field2": "5", "field3": "17"},
+			defaultValue: 1,
+			targetField:  "target field",
+			exeptedValue: 1,
+		},
+		{
+			name:         "got default due error",
+			params:       map[string]string{"field1": "notIntValue", "field2": "5", "field3": "17"},
+			defaultValue: 1,
+			targetField:  "field1",
+			exeptedValue: 1,
+		},
+		{
+			name:         "got negative 5",
+			params:       map[string]string{"field1": "notIntValue", "field2": "5", "field3": "-5"},
+			defaultValue: 1,
+			targetField:  "field3",
+			exeptedValue: -5,
+		},
+		{
+			name:         "int overflow",
+			params:       map[string]string{"field1": "12345678901234567890123456789012345678901234567890", "field2": "5", "field3": "-5"},
+			defaultValue: 1,
+			targetField:  "field1",
+			exeptedValue: 1,
+		},
+		{
+			name:         "dont parse float",
+			params:       map[string]string{"field1": "5.15", "field2": "5", "field3": "-5"},
+			defaultValue: 10,
+			targetField:  "field1",
+			exeptedValue: 10,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reqParams := url.Values{}
+			for k, v := range tc.params {
+				reqParams.Add(k, v)
+			}
+			r := httptest.NewRequest("GET", "/", nil)
+			r.URL.RawQuery = reqParams.Encode()
+
+			result := getIntFieldOrDefault(r, tc.targetField, tc.defaultValue)
+
+			assert.Equal(t, tc.exeptedValue, result)
 		})
 	}
 }

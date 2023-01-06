@@ -150,6 +150,9 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 func (r *RecordManager) UpdateById(tableName string, id int, data map[string]string) error {
 	log.Printf("updating record (id=%d) from table %s", id, tableName)
 
+	if len(data) == 0 {
+		return fmt.Errorf("missing data to update")
+	}
 	unit, err := validateData(data)
 	if err != nil {
 		log.Printf("invalid data")

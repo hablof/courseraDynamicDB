@@ -115,7 +115,10 @@ func (rp *requestProcessor) insertRecord(w http.ResponseWriter, r *http.Request)
 	}
 
 	lastInsertedId, err := rp.service.Create(tableName, unit)
-	if err != nil {
+	if err == service.ErrTableNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to insert record"))
 		return
@@ -150,7 +153,7 @@ func (rp *requestProcessor) updateRecord(w http.ResponseWriter, r *http.Request)
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("unable to insert record"))
+		w.Write([]byte("unable to update record"))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -164,7 +167,7 @@ func newRequectProcessor(s *service.Service) *requestProcessor {
 }
 
 func getIntFieldOrDefault(r *http.Request, field string, defaultValue int) int {
-	valueStr := r.URL.Query().Get("limit")
+	valueStr := r.URL.Query().Get(field)
 	if valueStr == "" {
 		return defaultValue
 	}

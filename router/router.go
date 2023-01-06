@@ -47,7 +47,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			router.getSingleRecord(w, r)
-		case "PUT":
+		case "POST":
 			router.updateRecord(w, r)
 		case "DELETE":
 			router.deleteRecord(w, r)
