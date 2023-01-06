@@ -198,6 +198,7 @@ func newRecordService(repo *repository.Repository, dbe dbexplorer.SchemeParser) 
 	}
 }
 
+// reflect Type.ConvertibleTo(u Type) bool ??
 func validateData(data map[string]string) (map[string]interface{}, error) {
 	output := make(map[string]interface{})
 	for k, v := range data {
