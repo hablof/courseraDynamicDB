@@ -46,16 +46,16 @@ func (r *RecordManager) GetAllTables() ([]byte, error) {
 func (r *RecordManager) Create(tableName string, data map[string]string) (int, error) {
 	log.Printf("inserting record to table %s\n", tableName)
 
-	unit, err := validateData(data)
-	if err != nil {
-		log.Printf("invalid data")
-		return 0, err
-	}
-
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
 		return 0, ErrTableNotFound
+	}
+
+	unit, err := validateDataToCreate(data, tableStruct)
+	if err != nil {
+		log.Printf("invalid data")
+		return 0, err
 	}
 
 	insertedId, err := r.repo.Create(tableStruct, unit)
@@ -117,13 +117,13 @@ func (r *RecordManager) GetAllRecords(tableName string, limit int, offset int) (
 
 // GetById implements RecordService
 func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
+	log.Printf("getting record (id=%d) from table %s", id, tableName)
+
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
 		return nil, ErrTableNotFound
 	}
-
-	log.Printf("getting record (id=%d) from table %s", id, tableName)
 
 	primaryKey, err := getPKColumnName(tableStruct)
 	if err != nil {
@@ -150,19 +150,16 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 func (r *RecordManager) UpdateById(tableName string, id int, data map[string]string) error {
 	log.Printf("updating record (id=%d) from table %s", id, tableName)
 
-	if len(data) == 0 {
-		return fmt.Errorf("missing data to update")
-	}
-	unit, err := validateData(data)
-	if err != nil {
-		log.Printf("invalid data")
-		return err
-	}
-
 	tableStruct, ok := r.Schema[tableName]
 	if !ok {
 		log.Printf("table %s not found", tableName)
 		return ErrTableNotFound
+	}
+
+	unit, err := validateDataToUpdate(data, tableStruct)
+	if err != nil {
+		log.Printf("invalid data")
+		return err
 	}
 
 	primaryKey, err := getPKColumnName(tableStruct)
@@ -205,6 +202,43 @@ func validateData(data map[string]string) (map[string]interface{}, error) {
 		output[k] = v
 	}
 	return output, nil
+}
+
+func validateDataToCreate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+
+	unit := make(map[string]interface{}, len(tableStruct.Columns))
+
+	for _, c := range tableStruct.Columns {
+		if c.IsPrimaryKey {
+			continue
+		}
+		if value, ok := data[c.Name]; ok {
+			unit[c.Name] = value
+		} else if !c.Nullable {
+			return nil, fmt.Errorf("missing non-nullable field")
+		}
+	}
+
+	return unit, nil
+}
+
+func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+
+	unit := make(map[string]interface{}, len(tableStruct.Columns))
+
+	for _, c := range tableStruct.Columns {
+		if c.IsPrimaryKey {
+			continue
+		}
+		if value, ok := data[c.Name]; ok {
+			unit[c.Name] = value
+		}
+	}
+	if len(unit) == 0 {
+		return nil, fmt.Errorf("missing data to update")
+	}
+
+	return unit, nil
 }
 
 func getPKColumnName(t internal.Table) (string, error) {
