@@ -83,6 +83,7 @@ func (r *RecordManager) DeleteById(tableName string, id int) error {
 	}
 
 	if err := r.repo.DeleteById(tableStruct, primaryKey, id); err == repository.ErrRowNotFound {
+		log.Printf("record (id=%d) not found", id)
 		return ErrRecordNotFound
 	} else if err != nil {
 		log.Printf("unable to delete record: %+v", err)
@@ -133,6 +134,7 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 
 	data, err := r.repo.GetById(tableStruct, primaryKey, id)
 	if err == repository.ErrRowNotFound {
+		log.Printf("record (id=%d) not found", id)
 		return nil, ErrRecordNotFound
 	} else if err != nil {
 		log.Printf("unable to get record dy id: %+v", err)
@@ -169,6 +171,7 @@ func (r *RecordManager) UpdateById(tableName string, id int, data map[string]str
 	}
 
 	if err := r.repo.UpdateById(tableStruct, primaryKey, id, unit); err == repository.ErrRowNotFound {
+		log.Printf("record (id=%d) not found", id)
 		return ErrRecordNotFound
 	} else if err != nil {
 		log.Printf("unable to update record by id: %+v", err)
