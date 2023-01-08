@@ -18,9 +18,7 @@ type recordManager struct {
 // Create implements RecordManager
 func (rm *recordManager) Create(table internal.Table, data map[string]interface{}) (lastInsertedId int, err error) {
 	fields, placehoders, sqlVals := getInsertParams(data)
-	q := `
-	INSERT INTO %s (%s)
-	VALUES (%s);`
+	q := "INSERT INTO %s (%s) VALUES (%s);"
 	query := fmt.Sprintf(q, table.Name, fields, placehoders)
 	res, err := rm.db.Exec(query, sqlVals...)
 	if err != nil {
@@ -42,10 +40,7 @@ func (rm *recordManager) Create(table internal.Table, data map[string]interface{
 
 // DeleteById implements RecordManager
 func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id int) (err error) {
-	q := `
-	DELETE
-	FROM %s
-	WHERE %s = ?;`
+	q := "DELETE FROM %s WHERE %s = ?;"
 	query := fmt.Sprintf(q, table.Name, primaryKey)
 
 	res, err := rm.db.Exec(query, id)
@@ -68,23 +63,19 @@ func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id 
 // GetAllRecords implements RecordManager
 func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset int) (data []map[string]interface{}, err error) {
 	fields := getQueryFields(table)
-	q := `
-	SELECT %s
-	FROM %s
-	LIMIT ?
-	OFFSET ?;`
+	q := "SELECT %s FROM %s LIMIT ? OFFSET ?;"
 	query := fmt.Sprintf(q, fields, table.Name)
 
 	rows, err := rm.db.Query(query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get records due to error: %+v", err)
+	}
 	defer func() {
 		err := rows.Close()
 		if err != nil {
 			log.Println(err)
 		}
 	}()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get records from sql due to error: %+v", err)
-	}
 
 	content := make([]map[string]interface{}, 0)
 	dest := initScanDestination(table)
@@ -99,15 +90,12 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 // GetById implements RecordManager
 func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int) (data map[string]interface{}, err error) {
 	fields := getQueryFields(table)
-	q := `
-	SELECT %s
-	FROM %s
-	WHERE %s = ?;`
+	q := "SELECT %s FROM %s WHERE %s = ?;"
 	query := fmt.Sprintf(q, fields, table.Name, primaryKey)
 
 	row := rm.db.QueryRow(query, id)
 	if err := row.Err(); err != nil {
-		return nil, fmt.Errorf("unable to get records from sql due to error: %+v", err)
+		return nil, fmt.Errorf("unable to get records due to error: %+v", err)
 	}
 
 	dest := initScanDestination(table)
@@ -128,10 +116,7 @@ func (rm *recordManager) UpdateById(table internal.Table, primaryKey string, id 
 		return fmt.Errorf("required at least one field to update")
 	}
 
-	q := `
-	UPDATE %s
-	SET %s
-	WHERE %s = ?;`
+	q := "UPDATE %s SET %s WHERE %s = ?;"
 	query := fmt.Sprintf(q, table.Name, keyValues, primaryKey)
 	sqlVals = append(sqlVals, id)
 	result, err := rm.db.Exec(query, sqlVals...)
