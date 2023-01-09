@@ -61,6 +61,7 @@ func (rp *requestProcessor) getRecords(w http.ResponseWriter, r *http.Request) {
 	data, err := rp.service.GetAllRecords(tableName, limit, offset)
 	if err == service.ErrTableNotFound {
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("unknown table"))
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -84,8 +85,13 @@ func (rp *requestProcessor) getSingleRecord(w http.ResponseWriter, r *http.Reque
 	}
 
 	data, err := rp.service.GetById(tableName, id)
-	if err == service.ErrRecordNotFound || err == service.ErrTableNotFound {
+	if err == service.ErrRecordNotFound {
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("record not found"))
+		return
+	} else if err == service.ErrTableNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("unknown table"))
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

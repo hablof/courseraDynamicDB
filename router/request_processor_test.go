@@ -208,7 +208,7 @@ func TestRouter_getRecords(t *testing.T) {
 			name:              "not found (table)",
 			urlPath:           "/table",
 			expectedSatusCode: 404,
-			expectedBody:      "",
+			expectedBody:      "unknown table",
 			tableName:         "table",
 			limit:             5,
 			offset:            0,
@@ -279,7 +279,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			name:              "not found (table)",
 			urlPath:           "/table/3",
 			expectedSatusCode: 404,
-			expectedBody:      "",
+			expectedBody:      "unknown table",
 			tableName:         "table",
 			id:                3,
 			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
@@ -290,7 +290,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			name:              "not found (record)",
 			urlPath:           "/table/3",
 			expectedSatusCode: 404,
-			expectedBody:      "",
+			expectedBody:      "record not found",
 			tableName:         "table",
 			id:                3,
 			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
@@ -342,7 +342,7 @@ func TestRouter_updateRecord(t *testing.T) {
 			expectedBody:      "updated record id 3",
 			tableName:         "table",
 			id:                3,
-			updateData:        map[string]string{"updating field": "new data"},
+			updateData:        map[string]string{"some field": "new value", "another field": "another value"},
 			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
 				ms.EXPECT().UpdateById(tableName, id, data).Return(nil)
 			},
