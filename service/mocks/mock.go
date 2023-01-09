@@ -34,7 +34,7 @@ func (m *MockRecordService) EXPECT() *MockRecordServiceMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockRecordService) Create(tableName string, data map[string]string) (int, error) {
+func (m *MockRecordService) Create(tableName string, data map[string]interface{}) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", tableName, data)
 	ret0, _ := ret[0].(int)
@@ -122,7 +122,7 @@ func (mr *MockRecordServiceMockRecorder) InitSchema() *gomock.Call {
 }
 
 // UpdateById mocks base method.
-func (m *MockRecordService) UpdateById(tableName string, id int, data map[string]string) error {
+func (m *MockRecordService) UpdateById(tableName string, id int, data map[string]interface{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateById", tableName, id, data)
 	ret0, _ := ret[0].(error)

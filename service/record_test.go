@@ -91,7 +91,7 @@ var (
 		},
 	}
 
-	serializedExampleDataWithNull string = "[\n    {\n        \"additional_field\": null,\n        \"field\": \"value\",\n        \"primary_column\": 3\n    },\n    {\n        \"additional_field\": null,\n        \"field\": \"another value\",\n        \"primary_column\": 4\n    }\n]"
+	serializedExampleDataWithNull string = "[\n    {\n        \"field\": \"value\",\n        \"primary_column\": 3\n    },\n    {\n        \"field\": \"another value\",\n        \"primary_column\": 4\n    }\n]"
 )
 
 func TestService_GetAllTables(t *testing.T) {
@@ -141,7 +141,7 @@ func TestService_Create(t *testing.T) {
 		name             string
 		schema           internal.Schema
 		tableName        string
-		inputData        map[string]string
+		inputData        map[string]interface{}
 		dataToExpect     map[string]interface{}
 		expectedInsertId int
 		expectedErr      error
@@ -151,7 +151,7 @@ func TestService_Create(t *testing.T) {
 			name:             "OK",
 			schema:           testingSchema,
 			tableName:        "example_table_1",
-			inputData:        map[string]string{"name": "name", "nullable_field": "not null"},
+			inputData:        map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			dataToExpect:     map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			expectedInsertId: 10,
 			expectedErr:      nil,
@@ -163,7 +163,7 @@ func TestService_Create(t *testing.T) {
 			name:             "unknown fields",
 			schema:           testingSchema,
 			tableName:        "example_table_1",
-			inputData:        map[string]string{"name": "name", "nullable_field": "not null", "unknown_field": "literal", "unknown_field_2": "literal_2"},
+			inputData:        map[string]interface{}{"name": "name", "nullable_field": "not null", "unknown_field": "literal", "unknown_field_2": "literal_2"},
 			dataToExpect:     map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			expectedInsertId: 20,
 			expectedErr:      nil,
@@ -175,7 +175,7 @@ func TestService_Create(t *testing.T) {
 			name:             "okay to skip nullable field",
 			schema:           testingSchema,
 			tableName:        "example_table_1",
-			inputData:        map[string]string{"name": "name"},
+			inputData:        map[string]interface{}{"name": "name"},
 			dataToExpect:     map[string]interface{}{"name": "name"},
 			expectedInsertId: 30,
 			expectedErr:      nil,
@@ -187,7 +187,7 @@ func TestService_Create(t *testing.T) {
 			name:             "get primary key field no effect",
 			schema:           testingSchema,
 			tableName:        "example_table_1",
-			inputData:        map[string]string{"name": "name", "primary_key": "11"},
+			inputData:        map[string]interface{}{"name": "name", "primary_key": "11"},
 			dataToExpect:     map[string]interface{}{"name": "name"},
 			expectedInsertId: 40,
 			expectedErr:      nil,
@@ -199,7 +199,7 @@ func TestService_Create(t *testing.T) {
 			name:             "get primary key field no effect",
 			schema:           testingSchema,
 			tableName:        "example_table_1",
-			inputData:        map[string]string{"name": "name", "primary_key": "11"},
+			inputData:        map[string]interface{}{"name": "name", "primary_key": "11"},
 			dataToExpect:     map[string]interface{}{"name": "name"},
 			expectedInsertId: 40,
 			expectedErr:      nil,
@@ -211,7 +211,7 @@ func TestService_Create(t *testing.T) {
 			name:             "not found (table)",
 			schema:           testingSchema,
 			tableName:        "unknown_table_1",
-			inputData:        map[string]string{"name": "name", "nullable_field": "not null"},
+			inputData:        map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			dataToExpect:     map[string]interface{}{},
 			expectedInsertId: 0,
 			expectedErr:      ErrTableNotFound,
@@ -222,7 +222,7 @@ func TestService_Create(t *testing.T) {
 			name:             "missing non-nullable field",
 			schema:           testingSchema,
 			tableName:        "example_table_1",
-			inputData:        map[string]string{"nullable_field": "not null"},
+			inputData:        map[string]interface{}{"nullable_field": "not null"},
 			dataToExpect:     map[string]interface{}{},
 			expectedInsertId: 0,
 			expectedErr:      fmt.Errorf("missing non-nullable field"),
@@ -233,7 +233,7 @@ func TestService_Create(t *testing.T) {
 			name:             "repository error",
 			schema:           testingSchema,
 			tableName:        "example_table_1",
-			inputData:        map[string]string{"name": "name", "nullable_field": "not null"},
+			inputData:        map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			dataToExpect:     map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			expectedInsertId: 0,
 			expectedErr:      fmt.Errorf("repository error"),
@@ -543,7 +543,7 @@ func TestService_UpdateById(t *testing.T) {
 		tableName     string
 		primaryKey    string
 		id            int
-		inputData     map[string]string
+		inputData     map[string]interface{}
 		dataToExpect  map[string]interface{}
 		errorToReturn error
 		expectedErr   error
@@ -555,7 +555,7 @@ func TestService_UpdateById(t *testing.T) {
 			tableName:     "example_table_1",
 			primaryKey:    "primary_key",
 			id:            3,
-			inputData:     map[string]string{"name": "updated name"},
+			inputData:     map[string]interface{}{"name": "updated name"},
 			dataToExpect:  map[string]interface{}{"name": "updated name"},
 			errorToReturn: nil,
 			expectedErr:   nil,
@@ -568,7 +568,7 @@ func TestService_UpdateById(t *testing.T) {
 			schema:        testingSchema,
 			tableName:     "example_table_1",
 			id:            3,
-			inputData:     map[string]string{"unknown_field": "value"},
+			inputData:     map[string]interface{}{"unknown_field": "value"},
 			errorToReturn: nil,
 			expectedErr:   fmt.Errorf("missing data to update"),
 			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
@@ -579,7 +579,7 @@ func TestService_UpdateById(t *testing.T) {
 			schema:      testingSchema,
 			tableName:   "unknown_table",
 			id:          3,
-			inputData:   map[string]string{"name": "updated name"},
+			inputData:   map[string]interface{}{"name": "updated name"},
 			expectedErr: ErrTableNotFound,
 			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 			},
@@ -590,7 +590,7 @@ func TestService_UpdateById(t *testing.T) {
 			tableName:     "example_table_1",
 			primaryKey:    "primary_key",
 			id:            100500,
-			inputData:     map[string]string{"name": "updated name"},
+			inputData:     map[string]interface{}{"name": "updated name"},
 			dataToExpect:  map[string]interface{}{"name": "updated name"},
 			errorToReturn: repository.ErrRowNotFound,
 			expectedErr:   ErrRecordNotFound,

@@ -103,13 +103,14 @@ func (rp *requestProcessor) getSingleRecord(w http.ResponseWriter, r *http.Reque
 func (rp *requestProcessor) insertRecord(w http.ResponseWriter, r *http.Request) {
 	tableName := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/"), "/")
 
+	// if r.Header.Values("content-type")
 	if err := r.ParseForm(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	urlVals := r.PostForm
-	unit := make(map[string]string)
+	unit := make(map[string]interface{})
 	for k := range urlVals {
 		unit[k] = urlVals.Get(k)
 	}
@@ -143,7 +144,7 @@ func (rp *requestProcessor) updateRecord(w http.ResponseWriter, r *http.Request)
 	}
 
 	urlVals := r.PostForm
-	unit := make(map[string]string)
+	unit := make(map[string]interface{})
 	for k := range urlVals {
 		unit[k] = urlVals.Get(k)
 	}
