@@ -27,8 +27,13 @@ func (rp *requestProcessor) deleteRecord(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := rp.service.DeleteById(tableName, id); err == service.ErrRecordNotFound || err == service.ErrTableNotFound {
+	if err := rp.service.DeleteById(tableName, id); err == service.ErrRecordNotFound {
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("record not found"))
+		return
+	} else if err == service.ErrTableNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("unknown table"))
 		return
 	} else if err != nil {
 		log.Println(err.Error())

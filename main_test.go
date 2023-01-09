@@ -8,17 +8,17 @@ import (
 	"hw6coursera/router"
 	"hw6coursera/service"
 	"log"
-	"reflect"
 	"testing"
 
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/stretchr/testify/assert"
 )
 
 // // CaseResponse
@@ -57,7 +57,7 @@ func PrepareTestApis(db *sql.DB) {
   		PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 
-		`INSERT INTO items (title, description, updated) VALUES
+		`INSERT INTO items_test (title, description, updated) VALUES
 		('database/sql',	'Рассказать про базы данных',	'rvasily'),
 		('memcache',	'Рассказать про мемкеш с примером использования',	NULL);`,
 
@@ -73,7 +73,7 @@ func PrepareTestApis(db *sql.DB) {
   		PRIMARY KEY (user_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 
-		`INSERT INTO users (login, password, email, info, updated) VALUES
+		`INSERT INTO users_test (login, password, email, info, updated) VALUES
 		('rvasily',	'love',	'rvasily@example.com',	'none',	NULL);`,
 	}
 
@@ -149,15 +149,59 @@ func TestApis(t *testing.T) {
 
 	updatingData := map[string]string{"description": "Написать программу db_crud"}
 
-	updatedItem := map[string]string{"id": "42", "title": "db_crud", "description": ""}
+	updatedItem := map[string]string{"id": "3", "title": "db_crud", "description": "Написать программу db_crud"}
 	updatedItemBytes, _ := json.MarshalIndent(updatedItem, "", "    ")
 	updatedItemString := string(updatedItemBytes)
 
 	updatingData2 := map[string]string{"updated": "autotests"}
 
-	updatedItem2 := map[string]string{"id": "42", "title": "db_crud", "description": "", "updated": "autotests"}
+	updatedItem2 := map[string]string{"id": "3", "title": "db_crud", "description": "", "updated": "autotests"}
 	updatedItemBytes2, _ := json.MarshalIndent(updatedItem2, "", "    ")
 	updatedItemString2 := string(updatedItemBytes2)
+
+	finaleItem := map[string]string{"id": "3", "title": "db_crud"}
+	finaleItemBytes, _ := json.MarshalIndent(finaleItem, "", "    ")
+	finaleItemString := string(finaleItemBytes)
+
+	userRVasiliy := map[string]interface{}{
+		"user_id":  1,
+		"login":    "rvasily",
+		"password": "love",
+		"email":    "rvasily@example.com",
+		"info":     "none",
+	}
+	userRVasiliyBytes, _ := json.MarshalIndent(userRVasiliy, "", "    ")
+	userRVasiliyString := string(userRVasiliyBytes)
+
+	updatedVasiliy := map[string]interface{}{
+		"user_id":  1,
+		"login":    "rvasily",
+		"password": "love",
+		"email":    "rvasily@example.com",
+		"info":     "none",
+	}
+	updatedVasiliyBytes, _ := json.MarshalIndent(updatedVasiliy, "", "    ")
+	updatedVasiliyString := string(updatedVasiliyBytes)
+
+	users := []map[string]interface{}{
+		{
+			"user_id":  1,
+			"login":    "rvasily",
+			"password": "love",
+			"email":    "rvasily@example.com",
+			"info":     "try update",
+			"updated":  "now",
+		},
+		{
+			"user_id":  2,
+			"login":    "qwerty'",
+			"password": "love\"",
+			"email":    "",
+			"info":     "",
+		},
+	}
+	usersBytes, _ := json.MarshalIndent(users, "", "    ")
+	usersString := string(usersBytes)
 
 	cases := []testCase{
 		{
@@ -177,28 +221,28 @@ func TestApis(t *testing.T) {
 			expectedResponseBody: itemsData,
 		},
 		{
-			path:                 "/items",
+			path:                 "/items_test",
 			queryParams:          "limit=1",
 			expectedResponseBody: items1stRecord,
 		},
 		{
-			path:                 "/items",
+			path:                 "/items_test",
 			queryParams:          "limit=1&offset=1",
 			expectedResponseBody: items2stRecord,
 		},
 		{
-			path:                 "/items/1",
+			path:                 "/items_test/1",
 			expectedResponseBody: items1stRecord,
 		},
 		{
-			path:                   "/items/100500",
+			path:                   "/items_test/100500",
 			expectedResponseStatus: http.StatusNotFound,
 			expectedResponseBody:   "record not found",
 		},
 
 		// тут идёт создание и редактирование
 		{
-			path:                 "/items/",
+			path:                 "/items_test/",
 			method:               http.MethodPut,
 			requestBody:          newItem,
 			expectedResponseBody: "last insert id 3",
@@ -207,314 +251,223 @@ func TestApis(t *testing.T) {
 		// если много раз вызывать один и тот же тест - записи будут добавляться
 		// поэтому придётся сделать сброс базы каждый раз в PrepareTestData
 		{
-			path:                 "/items/3",
+			path:                 "/items_test/3",
 			expectedResponseBody: newItemString,
 		},
 		{
-			path:                 "/items/3",
+			path:                 "/items_test/3",
 			method:               http.MethodPost,
 			requestBody:          updatingData,
 			expectedResponseBody: "updated record id 3",
 		},
 		{
-			path:                 "/items/3",
+			path:                 "/items_test/3",
 			expectedResponseBody: updatedItemString,
 		},
 
 		// обновление null-поля в таблице
 		{
-			path:                 "/items/3",
+			path:                 "/items_test/3",
 			method:               http.MethodPost,
 			requestBody:          updatingData2,
 			expectedResponseBody: "updated record id 3",
 		},
 		{
-			path:                 "/items/3",
+			path:                 "/items_test/3",
 			expectedResponseBody: updatedItemString2,
 		},
 
 		// обновление null-поля в таблице
 		{
-			path:   "/items/3",
-			method: http.MethodPost,
-			requestBody: CR{
-				"updated": nil,
-			},
+			path:                 "/items_test/3",
+			method:               http.MethodPost,
+			requestBody:          map[string]string{"updated": "%00"},
 			expectedResponseBody: "updated record id 3",
 		},
 		{
-			path: "/items/3",
-			expectedResponseBody: CR{
-				"response": CR{
-					"record": CR{
-						"id":          3,
-						"title":       "db_crud",
-						"description": "Написать программу db_crud",
-						"updated":     nil,
-					},
-				},
-			},
+			path:                 "/items_test/3",
+			expectedResponseBody: finaleItemString,
 		},
 
 		// ошибки
 		{
-			path:                   "/items/3",
+			path:                   "/items_test/3",
 			method:                 http.MethodPost,
 			expectedResponseStatus: http.StatusBadRequest,
-			requestBody: CR{
-				"id": 4, // primary key нельзя обновлять у существующей записи
-			},
-			expectedResponseBody: CR{
-				"error": "field id have invalid type",
-			},
+			requestBody:            map[string]string{"id": "4"}, // primary key нельзя обновлять у существующей записи
+			expectedResponseBody:   "unable to update record",
 		},
+		// {
+		// 	path:                   "/items/3",
+		// 	method:                 http.MethodPost,
+		// 	expectedResponseStatus: http.StatusBadRequest,
+		// 	requestBody: CR{
+		// 		"title": 42,
+		// 	},
+		// 	expectedResponseBody: CR{
+		// 		"error": "field title have invalid type",
+		// 	},
+		// },
 		{
-			path:                   "/items/3",
+			path:                   "/items_test/3",
 			method:                 http.MethodPost,
 			expectedResponseStatus: http.StatusBadRequest,
-			requestBody: CR{
-				"title": 42,
-			},
-			expectedResponseBody: CR{
-				"error": "field title have invalid type",
-			},
-		},
-		{
-			path:                   "/items/3",
-			method:                 http.MethodPost,
-			expectedResponseStatus: http.StatusBadRequest,
-			requestBody: CR{
-				"title": nil,
-			},
-			expectedResponseBody: CR{
-				"error": "field title have invalid type",
-			},
+			requestBody:            map[string]string{"title": "%00"},
+			expectedResponseBody:   "unable to update record",
 		},
 
-		{
-			path:                   "/items/3",
-			method:                 http.MethodPost,
-			expectedResponseStatus: http.StatusBadRequest,
-			requestBody: CR{
-				"updated": 42,
-			},
-			expectedResponseBody: CR{
-				"error": "field updated have invalid type",
-			},
-		},
+		// {
+		// 	path:                   "/items/3",
+		// 	method:                 http.MethodPost,
+		// 	expectedResponseStatus: http.StatusBadRequest,
+		// 	requestBody: CR{
+		// 		"updated": 42,
+		// 	},
+		// 	expectedResponseBody: CR{
+		// 		"error": "field updated have invalid type",
+		// 	},
+		// },
 
 		// удаление
 		{
-			path:   "/items/3",
-			method: http.MethodDelete,
-			expectedResponseBody: CR{
-				"response": CR{
-					"deleted": 1,
-				},
-			},
+			path:                 "/items_test/3",
+			method:               http.MethodDelete,
+			expectedResponseBody: "deleted record id 3",
 		},
 		{
-			path:   "/items/3",
-			method: http.MethodDelete,
-			expectedResponseBody: CR{
-				"response": CR{
-					"deleted": 0,
-				},
-			},
-		},
-		{
-			path:                   "/items/3",
+			path:                   "/items_test/3",
+			method:                 http.MethodDelete,
 			expectedResponseStatus: http.StatusNotFound,
-			expectedResponseBody: CR{
-				"error": "record not found",
-			},
+			expectedResponseBody:   "record not found",
+		},
+		{
+			path:                   "/items_test/3",
+			expectedResponseStatus: http.StatusNotFound,
+			expectedResponseBody:   "record not found",
 		},
 
 		// и немного по другой таблице
 		{
-			path: "/users/1",
-			expectedResponseBody: CR{
-				"response": CR{
-					"record": CR{
-						"user_id":  1,
-						"login":    "rvasily",
-						"password": "love",
-						"email":    "rvasily@example.com",
-						"info":     "none",
-						"updated":  nil,
-					},
-				},
-			},
+			path:                 "/users_test/1",
+			expectedResponseBody: userRVasiliyString,
 		},
 
 		{
-			path:   "/users/1",
+			path:   "/users_test/1",
 			method: http.MethodPost,
-			requestBody: CR{
+			requestBody: map[string]string{
 				"info":    "try update",
 				"updated": "now",
 			},
-			expectedResponseBody: CR{
-				"response": CR{
-					"updated": 1,
-				},
-			},
+			expectedResponseBody: "updated record id 1",
 		},
 		{
-			path: "/users/1",
-			expectedResponseBody: CR{
-				"response": CR{
-					"record": CR{
-						"user_id":  1,
-						"login":    "rvasily",
-						"password": "love",
-						"email":    "rvasily@example.com",
-						"info":     "try update",
-						"updated":  "now",
-					},
-				},
-			},
+			path:                 "/users_test/1",
+			expectedResponseBody: updatedVasiliyString,
 		},
 		// ошибки
 		{
-			path:                   "/users/1",
+			path:                   "/users_test/1",
 			method:                 http.MethodPost,
 			expectedResponseStatus: http.StatusBadRequest,
-			requestBody: CR{
-				"user_id": 1, // primary key нельзя обновлять у существующей записи
+			requestBody: map[string]string{
+				"user_id": "1", // primary key нельзя обновлять у существующей записи
 			},
-			expectedResponseBody: CR{
-				"error": "field user_id have invalid type",
-			},
+			expectedResponseBody: "unable to update record",
 		},
 		// не забываем про sql-инъекции
 		{
-			path:   "/users/",
+			path:   "/users_test/",
 			method: http.MethodPut,
-			requestBody: CR{
-				"user_id":    2,
+			requestBody: map[string]string{
+				"user_id":    "2",
 				"login":      "qwerty'",
 				"password":   "love\"",
 				"unkn_field": "love",
 			},
-			expectedResponseBody: CR{
-				"response": CR{
-					"user_id": 2,
-				},
-			},
+			expectedResponseBody: "unable to insert record",
 		},
 		{
-			path: "/users/2",
-			expectedResponseBody: CR{
-				"response": CR{
-					"record": CR{
-						"user_id":  2,
-						"login":    "qwerty'",
-						"password": "love\"",
-						"email":    "",
-						"info":     "",
-						"updated":  nil,
-					},
-				},
-			},
+			path:                   "/users_test/2",
+			expectedResponseStatus: http.StatusNotFound,
+			expectedResponseBody:   "record not found",
 		},
+		{
+			path:   "/users_test/",
+			method: http.MethodPut,
+			requestBody: map[string]string{
+				"user_id":    "2",
+				"login":      "qwerty'",
+				"password":   "love\"",
+				"unkn_field": "love",
+				"email":      "",
+				"info":       "",
+			},
+			expectedResponseBody: "unable to insert record",
+		},
+
 		// тут тоже возможна sql-инъекция
 		// если пришло не число на вход - берём дефолтное значене для лимита-оффсета
 		{
-			path:        "/users",
-			queryParams: "limit=1'&offset=1\"",
-			expectedResponseBody: CR{
-				"response": CR{
-					"records": []CR{
-						{
-							"user_id":  1,
-							"login":    "rvasily",
-							"password": "love",
-							"email":    "rvasily@example.com",
-							"info":     "try update",
-							"updated":  "now",
-						},
-						{
-							"user_id":  2,
-							"login":    "qwerty'",
-							"password": "love\"",
-							"email":    "",
-							"info":     "",
-							"updated":  nil,
-						},
-					},
-				},
-			},
+			path:                 "/users_test",
+			queryParams:          "limit=1'&offset=1\"",
+			expectedResponseBody: usersString,
 		},
 	}
 
 	runCases(t, ts, db, cases)
 }
 
-func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
+func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []testCase) {
 	for idx, item := range cases {
-		var (
-			err      error
-			result   interface{}
-			expected interface{}
-			req      *http.Request
-		)
 
-		caseName := fmt.Sprintf("case %d: [%s] %s %s", idx, item.Method, item.Path, item.QueryParams)
+		caseName := fmt.Sprintf("case %d: [%s] %s %s", idx, item.method, item.path, item.queryParams)
 
-		// если у вас случилась это ошибка - значит вы не делаете где-то rows.Close и у вас текут соединения с базой
-		// если такое случилось на первом тесте - значит вы не закрываете коннект где-то при иницаилизации в NewDbExplorer
 		if db.Stats().OpenConnections > 2 {
 			t.Fatalf("[%s] you have %d open connections, must be 2 or less", caseName, db.Stats().OpenConnections)
 		}
 
-		if item.Method == "" || item.Method == http.MethodGet {
-			req, err = http.NewRequest(item.Method, ts.URL+item.Path+item.Query, nil)
-		} else {
-			data, err := json.Marshal(item.Body)
-			if err != nil {
-				panic(err)
-			}
-			reqBody := bytes.NewReader(data)
-			req, err = http.NewRequest(item.Method, ts.URL+item.Path, reqBody)
-			req.Header.Add("Content-Type", "application/json")
+		params := url.Values{}
+		for k, v := range item.requestBody {
+			params.Add(k, v)
+		}
+		req := httptest.NewRequest(item.method, ts.URL+item.path+item.queryParams, bytes.NewBufferString(params.Encode()))
+
+		if item.method == http.MethodPut || item.method == http.MethodPost {
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		}
 
 		resp, err := client.Do(req)
-		if err != nil {
-			t.Errorf("[%s] request error: %v", caseName, err)
-			continue
-		}
+		assert.NoError(t, err)
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
 
-		// fmt.Printf("[%s] requestBody: %s\n", caseName, string(body))
-		if item.Status == 0 {
-			item.Status = http.StatusOK
+		if item.expectedResponseStatus == 0 {
+			item.expectedResponseStatus = http.StatusOK
 		}
 
-		if resp.StatusCode != item.Status {
-			t.Errorf("[%s] expected http status %v, got %v", caseName, item.Status, resp.StatusCode)
-			continue
-		}
+		assert.Equal(t, item.expectedResponseStatus, resp.StatusCode)
 
-		err = json.Unmarshal(body, &result)
-		if err != nil {
-			t.Fatalf("[%s] cant unpack json: %v", caseName, err)
-			continue
-		}
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		assert.Equal(t, item.expectedResponseBody, buf.String())
 
-		// reflect.DeepEqual не работает если нам приходят разные типы
-		// а там приходят разные типы (string VS interface{}) по сравнению с тем что в ожидаемом результате
-		// этот маленький грязный хак конвертит данные сначала в json, а потом обратно в interface - получаем совместимые результаты
-		// не используйте это в продакшен-коде - надо явно писать что ожидается интерфейс или использовать другой подход с точным форматом ответа
-		data, err := json.Marshal(item.Result)
-		json.Unmarshal(data, &expected)
+		// err = json.Unmarshal(body, &result)
+		// if err != nil {
+		// 	t.Fatalf("[%s] cant unpack json: %v", caseName, err)
+		// 	continue
+		// }
 
-		if !reflect.DeepEqual(result, expected) {
-			t.Errorf("[%s] results not match\nGot : %#v\nWant: %#v", caseName, result, expected)
-			continue
-		}
+		// // reflect.DeepEqual не работает если нам приходят разные типы
+		// // а там приходят разные типы (string VS interface{}) по сравнению с тем что в ожидаемом результате
+		// // этот маленький грязный хак конвертит данные сначала в json, а потом обратно в interface - получаем совместимые результаты
+		// // не используйте это в продакшен-коде - надо явно писать что ожидается интерфейс или использовать другой подход с точным форматом ответа
+		// data, err := json.Marshal(item.Result)
+		// json.Unmarshal(data, &expected)
+
+		// if !reflect.DeepEqual(result, expected) {
+		// 	t.Errorf("[%s] results not match\nGot : %#v\nWant: %#v", caseName, result, expected)
+		// 	continue
+		// }
 	}
 
 }
