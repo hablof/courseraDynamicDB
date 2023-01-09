@@ -43,7 +43,7 @@ func (r *RecordManager) GetAllTables() ([]byte, error) {
 }
 
 // Create implements RecordService
-func (r *RecordManager) Create(tableName string, data map[string]string) (int, error) {
+func (r *RecordManager) Create(tableName string, data map[string]interface{}) (int, error) {
 	log.Printf("inserting record to table %s\n", tableName)
 
 	tableStruct, ok := r.Schema[tableName]
@@ -108,6 +108,11 @@ func (r *RecordManager) GetAllRecords(tableName string, limit int, offset int) (
 		return nil, err
 	}
 
+	//поля с нуллами не отдаём
+	for _, elem := range data {
+		removeNulls(elem)
+	}
+
 	b, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		log.Printf("unable to serialize data: %+v", err)
@@ -140,6 +145,10 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 		log.Printf("unable to get record dy id: %+v", err)
 		return nil, err
 	}
+
+	//поля с нуллами не отдаём
+	removeNulls(data)
+
 	b, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		log.Printf("unable to serialize data: %+v", err)
@@ -148,8 +157,17 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 	return b, nil
 }
 
+// Это безопасно?
+func removeNulls(data map[string]interface{}) {
+	for k, v := range data {
+		if v == nil {
+			delete(data, k)
+		}
+	}
+}
+
 // UpdateById implements RecordService
-func (r *RecordManager) UpdateById(tableName string, id int, data map[string]string) error {
+func (r *RecordManager) UpdateById(tableName string, id int, data map[string]interface{}) error {
 	log.Printf("updating record (id=%d) from table %s", id, tableName)
 
 	tableStruct, ok := r.Schema[tableName]
@@ -199,7 +217,7 @@ func newRecordService(repo *repository.Repository, dbe dbexplorer.SchemeParser) 
 }
 
 // reflect Type.ConvertibleTo(u Type) bool ??
-func validateData(data map[string]string) (map[string]interface{}, error) {
+func validateData(data map[string]interface{}) (map[string]interface{}, error) {
 	output := make(map[string]interface{})
 	for k, v := range data {
 		output[k] = v
@@ -207,14 +225,26 @@ func validateData(data map[string]string) (map[string]interface{}, error) {
 	return output, nil
 }
 
-func validateDataToCreate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+func validateDataToCreate(data map[string]interface{}, tableStruct internal.Table) (map[string]interface{}, error) {
+
+	//меняем закодированный нулл на настоящий нулл
+	for k, v := range data {
+		if v == "%00" {
+			data[k] = nil
+		}
+	}
+
+	//избавляемся от нулей
+	removeNulls(data)
 
 	unit := make(map[string]interface{}, len(tableStruct.Columns))
 
 	for _, c := range tableStruct.Columns {
+		//auto-increnment не трогаем
 		if c.IsPrimaryKey {
 			continue
 		}
+		//отбираем только те ключи, которые есть в схеме БД
 		if value, ok := data[c.Name]; ok {
 			unit[c.Name] = value
 		} else if !c.Nullable {
@@ -225,22 +255,35 @@ func validateDataToCreate(data map[string]string, tableStruct internal.Table) (m
 	return unit, nil
 }
 
-func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+func validateDataToUpdate(data map[string]interface{}, tableStruct internal.Table) (map[string]interface{}, error) {
+
+	//меняем закодированный нулл на настоящий нулл
+	for k, v := range data {
+		if v == "%00" {
+			data[k] = nil
+		}
+	}
 
 	unit := make(map[string]interface{}, len(tableStruct.Columns))
 
 	for _, c := range tableStruct.Columns {
+		//auto-increnment не трогаем
 		if c.IsPrimaryKey {
 			continue
 		}
+		//отбираем только те ключи, которые есть в схеме БД
 		if value, ok := data[c.Name]; ok {
+			//не даём засунуть null в not-null
+			if !c.Nullable && value == nil {
+				return nil, fmt.Errorf("invalid data")
+			}
 			unit[c.Name] = value
 		}
 	}
+
 	if len(unit) == 0 {
 		return nil, fmt.Errorf("missing data to update")
 	}
-
 	return unit, nil
 }
 

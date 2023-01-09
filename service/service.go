@@ -11,8 +11,8 @@ type RecordService interface {
 	GetAllTables() (data []byte, err error)
 	GetAllRecords(tableName string, limit int, offset int) (data []byte, err error)
 	GetById(tableName string, id int) (data []byte, err error)
-	Create(tableName string, data map[string]string) (lastInsertedId int, err error)
-	UpdateById(tableName string, id int, data map[string]string) (err error)
+	Create(tableName string, data map[string]interface{}) (lastInsertedId int, err error)
+	UpdateById(tableName string, id int, data map[string]interface{}) (err error)
 	DeleteById(tableName string, id int) (err error)
 	InitSchema() error
 }
