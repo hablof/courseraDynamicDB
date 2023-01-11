@@ -8,4 +8,4 @@ RUN go build .
 
 EXPOSE 8082
 
-CMD ["./dhw6coursera"]
+CMD ["./hw6coursera"]

@@ -1,0 +1,17 @@
+services:
+  main-application:
+    build: .
+    ports:
+      - 8082:8082
+    depends_on:
+      - database-mysql
+
+  database-mysql:
+    image: mysql:latest
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+      - MYSQL_DATABASE=golang
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d
+      - ./.data:/var/lib/mysql
