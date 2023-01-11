@@ -63,7 +63,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			tableName:         "table",
 			id:                1,
 			expectedSatusCode: 404,
-			expectedBody:      "",
+			expectedBody:      "unknown table",
 			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().DeleteById(tableName, id).Return(service.ErrTableNotFound)
 			},
@@ -74,7 +74,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			tableName:         "table",
 			id:                1,
 			expectedSatusCode: 404,
-			expectedBody:      "",
+			expectedBody:      "record not found",
 			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().DeleteById(tableName, id).Return(service.ErrRecordNotFound)
 			},
