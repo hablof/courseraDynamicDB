@@ -1,6 +1,7 @@
-build:
+dep:
 	go mod download
 	go mod vendor
+build:
 	docker compose build main-application
 run:
 	docker compose up -d
