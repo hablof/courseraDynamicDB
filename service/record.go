@@ -217,13 +217,20 @@ func newRecordService(repo *repository.Repository, dbe dbexplorer.SchemeParser) 
 }
 
 // reflect Type.ConvertibleTo(u Type) bool ??
-func validateData(data map[string]interface{}) (map[string]interface{}, error) {
-	output := make(map[string]interface{})
-	for k, v := range data {
-		output[k] = v
-	}
-	return output, nil
-}
+// func validateData(data map[string]interface{}, tableStruct internal.Table) (map[string]interface{}, error) {
+// 	for _, col := range tableStruct.Columns {
+// 		switch expression {
+// 		case condition:
+
+// 		}
+// 	}
+
+// 	output := make(map[string]interface{})
+// 	for k, v := range data {
+// 		output[k] = v
+// 	}
+// 	return output, nil
+// }
 
 func validateDataToCreate(data map[string]interface{}, tableStruct internal.Table) (map[string]interface{}, error) {
 
