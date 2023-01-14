@@ -17,19 +17,19 @@ var (
 			Columns: []internal.Column{
 				{
 					Name:         "primary_key",
-					ColumnType:   nil,
+					ColumnType:   internal.IntType,
 					Nullable:     false,
 					IsPrimaryKey: true,
 				},
 				{
 					Name:         "name",
-					ColumnType:   nil,
+					ColumnType:   internal.StringType,
 					Nullable:     false,
 					IsPrimaryKey: false,
 				},
 				{
 					Name:         "nullable_field",
-					ColumnType:   nil,
+					ColumnType:   internal.StringType,
 					Nullable:     true,
 					IsPrimaryKey: false,
 				},
@@ -40,19 +40,19 @@ var (
 			Columns: []internal.Column{
 				{
 					Name:         "primary_column",
-					ColumnType:   nil,
+					ColumnType:   internal.IntType,
 					Nullable:     false,
 					IsPrimaryKey: true,
 				},
 				{
 					Name:         "field",
-					ColumnType:   nil,
+					ColumnType:   internal.StringType,
 					Nullable:     false,
 					IsPrimaryKey: false,
 				},
 				{
 					Name:         "additional_field",
-					ColumnType:   nil,
+					ColumnType:   internal.StringType,
 					Nullable:     true,
 					IsPrimaryKey: false,
 				},

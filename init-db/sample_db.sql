@@ -11,12 +11,15 @@ CREATE TABLE `items` (
   `title` varchar(255) NOT NULL,
   `description` text NOT NULL,
   `updated` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`)
+	`rating` decimal(5,2),
+	`shadow` boolean,
+	`level` int,
+  PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `items` (`id`, `title`, `description`, `updated`) VALUES
-(1,	'database/sql',	'Рассказать про базы данных',	'rvasily'),
-(2,	'memcache',	'Рассказать про мемкеш с примером использования',	NULL);
+		INSERT INTO `items` (`title`, `description`, `updated`, `rating`, `shadow`, `level`) VALUES
+		('database/sql', 'Рассказать про базы данных', 'rvasily', '5.0', TRUE, '15'),
+		('memcache', 'Рассказать про мемкеш с примером использования', NULL, '0.0', FALSE, '80');
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (

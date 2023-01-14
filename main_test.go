@@ -54,12 +54,15 @@ func PrepareTestApis(db *sql.DB) {
   		title varchar(255) NOT NULL,
   		description text NOT NULL,
   		updated varchar(255) DEFAULT NULL,
+		rating decimal(5,2),
+		shadow boolean,
+		level int,
   		PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 
-		`INSERT INTO items_test (title, description, updated) VALUES
-		('database/sql',	'Рассказать про базы данных',	'rvasily'),
-		('memcache',	'Рассказать про мемкеш с примером использования',	NULL);`,
+		`INSERT INTO items_test (title, description, updated, rating, shadow, level) VALUES
+		('database/sql', 'Рассказать про базы данных', 'rvasily', '5.0', TRUE, '15'),
+		('memcache', 'Рассказать про мемкеш с примером использования', NULL, '0.0', FALSE, '80');`,
 
 		`DROP TABLE IF EXISTS users_test;`,
 
@@ -205,7 +208,7 @@ func TestApis(t *testing.T) {
 
 	cases := []testCase{
 		{
-			name:                 "список таблиц",
+			name:                 "tables list",
 			path:                 "/",
 			expectedResponseBody: "[\n    \"items_test\",\n    \"users_test\"\n]",
 		},
@@ -221,36 +224,37 @@ func TestApis(t *testing.T) {
 			expectedResponseBody: itemsData,
 		},
 		{
+			name:                 "limit 1",
 			path:                 "/items_test",
 			queryParams:          "limit=1",
 			expectedResponseBody: items1stRecord,
 		},
 		{
+			name:                 "limit 1 offset 1",
 			path:                 "/items_test",
 			queryParams:          "limit=1&offset=1",
 			expectedResponseBody: items2stRecord,
 		},
 		{
+			name:                 "id 1",
 			path:                 "/items_test/1",
 			expectedResponseBody: items1stRecord,
 		},
 		{
+			name:                   "record not found",
 			path:                   "/items_test/100500",
 			expectedResponseStatus: http.StatusNotFound,
 			expectedResponseBody:   "record not found",
 		},
-
-		// тут идёт создание и редактирование
 		{
+			name:                 "new record",
 			path:                 "/items_test/",
 			method:               http.MethodPut,
 			requestBody:          newItem,
 			expectedResponseBody: "last insert id 3",
 		},
-		// это пример хрупкого теста
-		// если много раз вызывать один и тот же тест - записи будут добавляться
-		// поэтому придётся сделать сброс базы каждый раз в PrepareTestData
 		{
+			name:                 "id 3",
 			path:                 "/items_test/3",
 			expectedResponseBody: newItemString,
 		},
@@ -261,86 +265,97 @@ func TestApis(t *testing.T) {
 			expectedResponseBody: "updated record id 3",
 		},
 		{
+			name:                 "updated id 3",
 			path:                 "/items_test/3",
 			expectedResponseBody: updatedItemString,
 		},
-
-		// обновление null-поля в таблице
 		{
+			name:                 "update null",
 			path:                 "/items_test/3",
 			method:               http.MethodPost,
 			requestBody:          updatingData2,
 			expectedResponseBody: "updated record id 3",
 		},
 		{
+			name:                 "updated id 3 second time",
 			path:                 "/items_test/3",
 			expectedResponseBody: updatedItemString2,
 		},
-
-		// обновление null-поля в таблице
 		{
+			name:                 "set null",
 			path:                 "/items_test/3",
 			method:               http.MethodPost,
 			requestBody:          map[string]string{"updated": "%00"},
 			expectedResponseBody: "updated record id 3",
 		},
 		{
+			name:                 "updated id 3 third time",
 			path:                 "/items_test/3",
 			expectedResponseBody: finaleItemString,
 		},
-
-		// ошибки
 		{
+			name:                   "try update primary key",
 			path:                   "/items_test/3",
 			method:                 http.MethodPost,
 			expectedResponseStatus: http.StatusBadRequest,
 			requestBody:            map[string]string{"id": "4"}, // primary key нельзя обновлять у существующей записи
 			expectedResponseBody:   "unable to update record",
 		},
-		// {
-		// 	path:                   "/items/3",
-		// 	method:                 http.MethodPost,
-		// 	expectedResponseStatus: http.StatusBadRequest,
-		// 	requestBody: CR{
-		// 		"title": 42,
-		// 	},
-		// 	expectedResponseBody: CR{
-		// 		"error": "field title have invalid type",
-		// 	},
-		// },
 		{
+			name:                   "try update float with int",
+			path:                   "/items/3",
+			method:                 http.MethodPost,
+			expectedResponseStatus: http.StatusBadRequest,
+			requestBody:            map[string]string{"rating": "15"}, // int -> float
+			expectedResponseBody:   "invalid type rating",
+		},
+		{
+			name:                   "try update float with string",
+			path:                   "/items/3",
+			method:                 http.MethodPost,
+			expectedResponseStatus: http.StatusBadRequest,
+			requestBody:            map[string]string{"rating": "string"}, // string -> float
+			expectedResponseBody:   "invalid type rating",
+		},
+		{
+			name:                   "try update bool with string",
+			path:                   "/items/3",
+			method:                 http.MethodPost,
+			expectedResponseStatus: http.StatusBadRequest,
+			requestBody:            map[string]string{"shadow": "string"}, // string -> bool
+			expectedResponseBody:   "invalid type shadow",
+		},
+		{
+			name:                   "try update int with bool",
+			path:                   "/items/3",
+			method:                 http.MethodPost,
+			expectedResponseStatus: http.StatusBadRequest,
+			requestBody:            map[string]string{"level": "true"}, // bool -> int
+			expectedResponseBody:   "invalid type level",
+		},
+		{
+			name:                   "try set null",
 			path:                   "/items_test/3",
 			method:                 http.MethodPost,
 			expectedResponseStatus: http.StatusBadRequest,
 			requestBody:            map[string]string{"title": "%00"},
 			expectedResponseBody:   "unable to update record",
 		},
-
-		// {
-		// 	path:                   "/items/3",
-		// 	method:                 http.MethodPost,
-		// 	expectedResponseStatus: http.StatusBadRequest,
-		// 	requestBody: CR{
-		// 		"updated": 42,
-		// 	},
-		// 	expectedResponseBody: CR{
-		// 		"error": "field updated have invalid type",
-		// 	},
-		// },
-
-		// удаление
 		{
+			name:                 "delete",
 			path:                 "/items_test/3",
 			method:               http.MethodDelete,
 			expectedResponseBody: "deleted record id 3",
 		},
 		{
+			name:                   "delete deleted",
 			path:                   "/items_test/3",
 			method:                 http.MethodDelete,
 			expectedResponseStatus: http.StatusNotFound,
 			expectedResponseBody:   "record not found",
 		},
 		{
+			name:                   "deleted not found",
 			path:                   "/items_test/3",
 			expectedResponseStatus: http.StatusNotFound,
 			expectedResponseBody:   "record not found",
@@ -450,24 +465,6 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []testCase) {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
 		assert.Equal(t, item.expectedResponseBody, buf.String())
-
-		// err = json.Unmarshal(body, &result)
-		// if err != nil {
-		// 	t.Fatalf("[%s] cant unpack json: %v", caseName, err)
-		// 	continue
-		// }
-
-		// // reflect.DeepEqual не работает если нам приходят разные типы
-		// // а там приходят разные типы (string VS interface{}) по сравнению с тем что в ожидаемом результате
-		// // этот маленький грязный хак конвертит данные сначала в json, а потом обратно в interface - получаем совместимые результаты
-		// // не используйте это в продакшен-коде - надо явно писать что ожидается интерфейс или использовать другой подход с точным форматом ответа
-		// data, err := json.Marshal(item.Result)
-		// json.Unmarshal(data, &expected)
-
-		// if !reflect.DeepEqual(result, expected) {
-		// 	t.Errorf("[%s] results not match\nGot : %#v\nWant: %#v", caseName, result, expected)
-		// 	continue
-		// }
 	}
 
 }

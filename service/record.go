@@ -7,11 +7,14 @@ import (
 	"hw6coursera/internal"
 	"hw6coursera/repository"
 	"log"
+	"strconv"
 )
 
 const (
 	DefaultLimit  = 5
 	DefaultOffset = 0
+
+	encodedNull = "%00"
 )
 
 var (
@@ -43,7 +46,7 @@ func (r *RecordManager) GetAllTables() ([]byte, error) {
 }
 
 // Create implements RecordService
-func (r *RecordManager) Create(tableName string, data map[string]interface{}) (int, error) {
+func (r *RecordManager) Create(tableName string, data map[string]string) (int, error) {
 	log.Printf("inserting record to table %s\n", tableName)
 
 	tableStruct, ok := r.Schema[tableName]
@@ -167,7 +170,7 @@ func removeNulls(data map[string]interface{}) {
 }
 
 // UpdateById implements RecordService
-func (r *RecordManager) UpdateById(tableName string, id int, data map[string]interface{}) error {
+func (r *RecordManager) UpdateById(tableName string, id int, data map[string]string) error {
 	log.Printf("updating record (id=%d) from table %s", id, tableName)
 
 	tableStruct, ok := r.Schema[tableName]
@@ -216,78 +219,74 @@ func newRecordService(repo *repository.Repository, dbe dbexplorer.SchemeParser) 
 	}
 }
 
-// reflect Type.ConvertibleTo(u Type) bool ??
-// func validateData(data map[string]interface{}, tableStruct internal.Table) (map[string]interface{}, error) {
-// 	for _, col := range tableStruct.Columns {
-// 		switch expression {
-// 		case condition:
-
-// 		}
-// 	}
-
-// 	output := make(map[string]interface{})
-// 	for k, v := range data {
-// 		output[k] = v
-// 	}
-// 	return output, nil
-// }
-
-func validateDataToCreate(data map[string]interface{}, tableStruct internal.Table) (map[string]interface{}, error) {
-
-	//меняем закодированный нулл на настоящий нулл
-	for k, v := range data {
-		if v == "%00" {
-			data[k] = nil
-		}
-	}
-
-	//избавляемся от нулей
-	removeNulls(data)
-
+// Для создания считаем, что отсутствующие поля - попытка установить null
+func validateDataToCreate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
 	unit := make(map[string]interface{}, len(tableStruct.Columns))
-
 	for _, c := range tableStruct.Columns {
-		//auto-increnment не трогаем
-		if c.IsPrimaryKey {
+
+		if c.IsPrimaryKey { //auto-increnment не трогаем
 			continue
 		}
-		//отбираем только те ключи, которые есть в схеме БД
-		if value, ok := data[c.Name]; ok {
-			unit[c.Name] = value
-		} else if !c.Nullable {
-			return nil, fmt.Errorf("missing non-nullable field")
+
+		if value, ok := data[c.Name]; ok { //пропускаем только те ключи, которые есть в схеме БД
+			validValue, err := parseTypeAndNull(value, c)
+			if err != nil {
+				return nil, err
+			}
+			unit[c.Name] = validValue
+
+		} else if !c.Nullable { //ругаемся на попытку установить null в not-null
+			return nil, fmt.Errorf("%s cannot be null", c.Name)
 		}
 	}
-
 	return unit, nil
 }
 
-func validateDataToUpdate(data map[string]interface{}, tableStruct internal.Table) (map[string]interface{}, error) {
-
-	//меняем закодированный нулл на настоящий нулл
-	for k, v := range data {
-		if v == "%00" {
-			data[k] = nil
-		}
+func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
+	if c.Nullable && value == encodedNull {
+		return nil, nil
+	} else if !c.Nullable && value == encodedNull {
+		return nil, fmt.Errorf("%s cannot be null", c.Name)
 	}
 
-	unit := make(map[string]interface{}, len(tableStruct.Columns))
+	//value != encodedNull
+	var a any
+	var err error
 
+	switch c.ColumnType {
+	case internal.BoolType:
+		a, err = strconv.ParseBool(value)
+	case internal.IntType:
+		a, err = strconv.Atoi(value)
+	case internal.FloatType:
+		a, err = strconv.ParseFloat(value, 64)
+	default: // stringType || unknownType
+		a = value
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid type %s", c.Name)
+	}
+	return a, nil
+}
+
+// Для обновления считаем, что отсутствующие поля не обновляются
+func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+	unit := make(map[string]interface{}, len(tableStruct.Columns))
 	for _, c := range tableStruct.Columns {
-		//auto-increnment не трогаем
-		if c.IsPrimaryKey {
+
+		if c.IsPrimaryKey { //auto-increnment не трогаем
 			continue
 		}
-		//отбираем только те ключи, которые есть в схеме БД
-		if value, ok := data[c.Name]; ok {
-			//не даём засунуть null в not-null
-			if !c.Nullable && value == nil {
-				return nil, fmt.Errorf("invalid data")
+
+		if value, ok := data[c.Name]; ok { //пропускаем только те ключи, которые есть в схеме БД и у которых не null значения
+			validValue, err := parseTypeAndNull(value, c)
+			if err != nil {
+				return nil, err
 			}
-			unit[c.Name] = value
+			unit[c.Name] = validValue
 		}
 	}
-
 	if len(unit) == 0 {
 		return nil, fmt.Errorf("missing data to update")
 	}

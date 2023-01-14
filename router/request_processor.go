@@ -121,7 +121,7 @@ func (rp *requestProcessor) insertRecord(w http.ResponseWriter, r *http.Request)
 	}
 
 	urlVals := r.PostForm
-	unit := make(map[string]interface{})
+	unit := make(map[string]string)
 	for k := range urlVals {
 		unit[k] = urlVals.Get(k)
 	}
@@ -155,7 +155,7 @@ func (rp *requestProcessor) updateRecord(w http.ResponseWriter, r *http.Request)
 	}
 
 	urlVals := r.PostForm
-	unit := make(map[string]interface{})
+	unit := make(map[string]string)
 	for k := range urlVals {
 		unit[k] = urlVals.Get(k)
 	}

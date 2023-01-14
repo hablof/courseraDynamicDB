@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hw6coursera/internal"
 	"log"
+	"strings"
 )
 
 type dbExplorer struct {
@@ -35,6 +36,7 @@ func (e *dbExplorer) GetColumns(tableName string) ([]internal.Column, error) {
 	}
 
 	cols := make([]internal.Column, 0, len(sqlColumns))
+	// лучше бы всё это (то, что ниже) делать не в репозитории?
 	for _, ct := range sqlColumns {
 		c := internal.Column{}
 		c.Name = ct.Name()
@@ -46,7 +48,19 @@ func (e *dbExplorer) GetColumns(tableName string) ([]internal.Column, error) {
 			return nil, errors.New("shitty driver")
 		}
 		c.Nullable = nullable
-		c.ColumnType = ct.ScanType()
+		typeName := ct.DatabaseTypeName()
+		switch {
+		case strings.Contains(typeName, "INT"):
+			c.ColumnType = internal.IntType
+		case strings.Contains(typeName, "FLOAT") || strings.Contains(typeName, "DECIMAL") || strings.Contains(typeName, "DOUBLE"):
+			c.ColumnType = internal.FloatType
+		case strings.Contains(typeName, "TEXT") || strings.Contains(typeName, "CHAR"):
+			c.ColumnType = internal.StringType
+		case strings.Contains(typeName, "BOOL"):
+			c.ColumnType = internal.BoolType
+		default:
+			c.ColumnType = internal.BoolType
+		}
 		cols = append(cols, c)
 	}
 	return cols, nil

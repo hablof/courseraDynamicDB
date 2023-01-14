@@ -333,8 +333,8 @@ func TestRouter_updateRecord(t *testing.T) {
 		tableName          string
 		id                 int
 		requestData        map[string]string
-		updateDataToExpect map[string]interface{}
-		mockBehaviour      func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]interface{})
+		updateDataToExpect map[string]string
+		mockBehaviour      func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string)
 	}{
 		{
 			name:               "OK",
@@ -344,8 +344,8 @@ func TestRouter_updateRecord(t *testing.T) {
 			tableName:          "table",
 			id:                 3,
 			requestData:        map[string]string{"some field": "new value", "another field": "another value"},
-			updateDataToExpect: map[string]interface{}{"some field": "new value", "another field": "another value"},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]interface{}) {
+			updateDataToExpect: map[string]string{"some field": "new value", "another field": "another value"},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
 				ms.EXPECT().UpdateById(tableName, id, data).Return(nil)
 			},
 		},
@@ -357,8 +357,8 @@ func TestRouter_updateRecord(t *testing.T) {
 			tableName:          "table",
 			id:                 3,
 			requestData:        map[string]string{},
-			updateDataToExpect: map[string]interface{}{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]interface{}) {
+			updateDataToExpect: map[string]string{},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
 				ms.EXPECT().UpdateById(tableName, id, data).Return(fmt.Errorf("missing data to update"))
 			},
 		},
@@ -370,8 +370,8 @@ func TestRouter_updateRecord(t *testing.T) {
 			tableName:          "",
 			id:                 0,
 			requestData:        map[string]string{},
-			updateDataToExpect: map[string]interface{}{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]interface{}) {
+			updateDataToExpect: map[string]string{},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
 			},
 		},
 	}
@@ -416,8 +416,8 @@ func TestRouter_insertRecord(t *testing.T) {
 		tableName         string
 		lastInsertId      int
 		requestData       map[string]string
-		dataToExpect      map[string]interface{}
-		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, data map[string]interface{})
+		dataToExpect      map[string]string
+		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, data map[string]string)
 	}{
 		{
 			name:              "OK",
@@ -427,8 +427,8 @@ func TestRouter_insertRecord(t *testing.T) {
 			tableName:         "table",
 			lastInsertId:      3,
 			requestData:       map[string]string{"updating field": "new data"},
-			dataToExpect:      map[string]interface{}{"updating field": "new data"},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]interface{}) {
+			dataToExpect:      map[string]string{"updating field": "new data"},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
 				ms.EXPECT().Create(tableName, data).Return(3, nil)
 			},
 		},
@@ -440,8 +440,8 @@ func TestRouter_insertRecord(t *testing.T) {
 			tableName:         "table",
 			lastInsertId:      0,
 			requestData:       map[string]string{},
-			dataToExpect:      map[string]interface{}{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]interface{}) {
+			dataToExpect:      map[string]string{},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
 				ms.EXPECT().Create(tableName, data).Return(0, service.ErrTableNotFound)
 			},
 		},
@@ -453,8 +453,8 @@ func TestRouter_insertRecord(t *testing.T) {
 			tableName:         "table",
 			lastInsertId:      0,
 			requestData:       map[string]string{},
-			dataToExpect:      map[string]interface{}{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]interface{}) {
+			dataToExpect:      map[string]string{},
+			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
 				ms.EXPECT().Create(tableName, data).Return(0, fmt.Errorf("some service error"))
 			},
 		},

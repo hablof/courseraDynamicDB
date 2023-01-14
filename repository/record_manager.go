@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hw6coursera/internal"
 	"log"
-	"reflect"
 	"strings"
 )
 
@@ -195,24 +194,18 @@ func initScanDestination(t internal.Table) []interface{} {
 func extractSqlVals(tableStruct internal.Table, dest []interface{}) map[string]interface{} {
 	unit := make(map[string]interface{})
 	for i, c := range tableStruct.Columns {
-		reflectPointerToInterface := reflect.ValueOf(dest[i])
-		reflectInterface := reflect.Indirect(reflectPointerToInterface) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
-		goInterface := reflectInterface.Interface()
-		switch goValue := goInterface.(type) { //байты преобразуем в строку, остальное просто отдаём
+		ptrToInterface, ok := dest[i].(*interface{}) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
+		if !ok {
+			panic(dest[i])
+		}
+		value := *ptrToInterface
+
+		switch value := value.(type) { //байты преобразуем в строку, остальное просто отдаём
 		case []byte:
-			unit[c.Name] = string(goValue)
+			unit[c.Name] = string(value)
 		default:
-			unit[c.Name] = goValue
+			unit[c.Name] = value
 		}
 	}
 	return unit
 }
-
-// func getPKColumnName(t internal.Table) (string, error) {
-// 	for _, c := range t.Columns {
-// 		if c.IsPrimaryKey {
-// 			return c.Name, nil
-// 		}
-// 	}
-// 	return "", fmt.Errorf("there is no primary key column")
-// }
