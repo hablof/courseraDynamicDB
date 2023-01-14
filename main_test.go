@@ -55,14 +55,13 @@ func PrepareTestApis(db *sql.DB) {
   		description text NOT NULL,
   		updated varchar(255) DEFAULT NULL,
 		rating decimal(5,2),
-		shadow boolean,
 		level int,
   		PRIMARY KEY (id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 
-		`INSERT INTO items_test (title, description, updated, rating, shadow, level) VALUES
-		('database/sql', 'Рассказать про базы данных', 'rvasily', '5.0', TRUE, '15'),
-		('memcache', 'Рассказать про мемкеш с примером использования', NULL, '0.0', FALSE, '80');`,
+		`INSERT INTO items_test (title, description, updated, rating, level) VALUES
+		('database/sql', 'Рассказать про базы данных', 'rvasily', '5.0', '15'),
+		('memcache', 'Рассказать про мемкеш с примером использования', NULL, '0.0', '80');`,
 
 		`DROP TABLE IF EXISTS users_test;`,
 

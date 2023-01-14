@@ -56,10 +56,8 @@ func (e *dbExplorer) GetColumns(tableName string) ([]internal.Column, error) {
 			c.ColumnType = internal.FloatType
 		case strings.Contains(typeName, "TEXT") || strings.Contains(typeName, "CHAR"):
 			c.ColumnType = internal.StringType
-		case strings.Contains(typeName, "BOOL"):
-			c.ColumnType = internal.BoolType
 		default:
-			c.ColumnType = internal.BoolType
+			c.ColumnType = internal.UnknownType
 		}
 		cols = append(cols, c)
 	}

@@ -254,8 +254,6 @@ func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
 	var err error
 
 	switch c.ColumnType {
-	case internal.BoolType:
-		a, err = strconv.ParseBool(value)
 	case internal.IntType:
 		a, err = strconv.Atoi(value)
 	case internal.FloatType:

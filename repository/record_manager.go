@@ -80,7 +80,10 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 	dest := initScanDestination(table)
 	for rows.Next() {
 		rows.Scan(dest...)
-		unit := extractSqlVals(table, dest)
+		unit, err := extractSqlVals(table, dest)
+		if err != nil {
+			return nil, err
+		}
 		content = append(content, unit)
 	}
 	return content, nil
@@ -104,7 +107,10 @@ func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int
 		}
 		return nil, err
 	}
-	unit := extractSqlVals(table, dest)
+	unit, err := extractSqlVals(table, dest)
+	if err != nil {
+		return nil, err
+	}
 	return unit, nil
 }
 
@@ -191,12 +197,12 @@ func initScanDestination(t internal.Table) []interface{} {
 	return a
 }
 
-func extractSqlVals(tableStruct internal.Table, dest []interface{}) map[string]interface{} {
+func extractSqlVals(tableStruct internal.Table, dest []interface{}) (map[string]interface{}, error) {
 	unit := make(map[string]interface{})
 	for i, c := range tableStruct.Columns {
 		ptrToInterface, ok := dest[i].(*interface{}) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
 		if !ok {
-			panic(dest[i])
+			return nil, fmt.Errorf("interface indirect error")
 		}
 		value := *ptrToInterface
 
@@ -207,5 +213,5 @@ func extractSqlVals(tableStruct internal.Table, dest []interface{}) map[string]i
 			unit[c.Name] = value
 		}
 	}
-	return unit
+	return unit, nil
 }

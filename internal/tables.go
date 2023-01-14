@@ -4,7 +4,6 @@ const (
 	StringType  = "string"
 	IntType     = "int"
 	FloatType   = "float"
-	BoolType    = "bool"
 	UnknownType = "unknown"
 )
 
@@ -17,7 +16,7 @@ type Table struct {
 
 type Column struct {
 	Name         string
-	ColumnType   string //"VARCHAR", "TEXT", "NVARCHAR", "DECIMAL", "BOOL", "INT", "BIGINT" ....
+	ColumnType   string // "VARCHAR", "TEXT", "NVARCHAR", "DECIMAL", "INT", "BIGINT" ....
 	Nullable     bool
 	IsPrimaryKey bool
 }
