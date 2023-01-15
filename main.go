@@ -1,9 +1,8 @@
-// тут лежит тестовый код
-// менять вам может потребоваться только коннект к базе
 package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"hw6coursera/dbexplorer"
 	"hw6coursera/repository"
@@ -11,23 +10,38 @@ import (
 	"hw6coursera/service"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
-	// dsn это соединение с базой
-	// вы можете изменить этот на тот который вам нужен
-	// docker run -p 3366:3306 -v $(PWD):/docker-entrypoint-initdb.d -e MYSQL_ROOT_PASSWORD=1234 -e MYSQL_DATABASE=golang -d mysql
-	dsn = "root:1234@tcp(database-mysql:3306)/golang?charset=utf8"
-	// DSN = "coursera:5QPbAUufx7@tcp(localhost:3306)/coursera?charset=utf8"
+	localDSN  = "root:1234@tcp(localhost:%d)/golang?charset=utf8"
+	dockerDSN = "root:1234@tcp(database-mysql:3306)/golang?charset=utf8"
 )
 
 func main() {
 	log.Printf("startig application")
 
-	db, err := sql.Open("mysql", dsn)
+	var db *sql.DB
+	var err error
+	var port int
+
+	flag.Parse()
+	if flag.Arg(0) == "local" {
+		port, err = strconv.Atoi(flag.Arg(1))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		DSN := fmt.Sprintf(localDSN, port)
+		log.Printf("db dsn: %s", DSN)
+		db, err = sql.Open("mysql", DSN)
+	} else {
+		db, err = sql.Open("mysql", dockerDSN)
+	}
+
 	if err != nil {
 		log.Println(err)
 		return
@@ -39,6 +53,7 @@ func main() {
 		if err == nil {
 			break
 		}
+		log.Printf("failed to ping db: %v", err)
 		time.Sleep(5 * time.Second)
 	}
 

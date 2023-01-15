@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"hw6coursera/internal"
 	"log"
-	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -81,7 +81,10 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 	dest := initScanDestination(table)
 	for rows.Next() {
 		rows.Scan(dest...)
-		unit := extractSqlVals(table, dest)
+		unit, err := extractSqlVals(table, dest)
+		if err != nil {
+			return nil, err
+		}
 		content = append(content, unit)
 	}
 	return content, nil
@@ -105,7 +108,10 @@ func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int
 		}
 		return nil, err
 	}
-	unit := extractSqlVals(table, dest)
+	unit, err := extractSqlVals(table, dest)
+	if err != nil {
+		return nil, err
+	}
 	return unit, nil
 }
 
@@ -192,27 +198,30 @@ func initScanDestination(t internal.Table) []interface{} {
 	return a
 }
 
-func extractSqlVals(tableStruct internal.Table, dest []interface{}) map[string]interface{} {
+func extractSqlVals(tableStruct internal.Table, dest []interface{}) (map[string]interface{}, error) {
 	unit := make(map[string]interface{})
 	for i, c := range tableStruct.Columns {
-		reflectPointerToInterface := reflect.ValueOf(dest[i])
-		reflectInterface := reflect.Indirect(reflectPointerToInterface) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
-		goInterface := reflectInterface.Interface()
-		switch goValue := goInterface.(type) { //байты преобразуем в строку, остальное просто отдаём
+		ptrToInterface, ok := dest[i].(*interface{}) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
+		if !ok {
+			return nil, fmt.Errorf("interface indirect error")
+		}
+		value := *ptrToInterface
+
+		switch value := value.(type) { //байты преобразуем в строку, остальное просто отдаём
 		case []byte:
-			unit[c.Name] = string(goValue)
+			str := string(value)
+			if c.ColumnType == internal.FloatType { // отдадим в json число а не строку с числом
+				floatValue, err := strconv.ParseFloat(str, 64)
+				if err != nil {
+					return nil, fmt.Errorf("parse float error")
+				}
+				unit[c.Name] = floatValue
+			} else {
+				unit[c.Name] = str
+			}
 		default:
-			unit[c.Name] = goValue
+			unit[c.Name] = value
 		}
 	}
-	return unit
+	return unit, nil
 }
-
-// func getPKColumnName(t internal.Table) (string, error) {
-// 	for _, c := range t.Columns {
-// 		if c.IsPrimaryKey {
-// 			return c.Name, nil
-// 		}
-// 	}
-// 	return "", fmt.Errorf("there is no primary key column")
-// }
