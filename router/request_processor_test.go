@@ -436,7 +436,7 @@ func TestRouter_insertRecord(t *testing.T) {
 			name:              "not found (table)",
 			urlPath:           "/table",
 			expectedSatusCode: 404,
-			expectedBody:      "",
+			expectedBody:      "table not found",
 			tableName:         "table",
 			lastInsertId:      0,
 			requestData:       map[string]string{},

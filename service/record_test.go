@@ -225,7 +225,7 @@ func TestService_Create(t *testing.T) {
 			inputData:        map[string]string{"nullable_field": "not null"},
 			dataToExpect:     map[string]interface{}{},
 			expectedInsertId: 0,
-			expectedErr:      fmt.Errorf("name cannot be null"),
+			expectedErr:      ErrCannotBeNull{"name"},
 			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
 			},
 		},

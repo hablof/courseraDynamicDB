@@ -1,6 +1,7 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"hw6coursera/service"
 	"log"
@@ -127,14 +128,21 @@ func (rp *requestProcessor) insertRecord(w http.ResponseWriter, r *http.Request)
 	}
 
 	lastInsertedId, err := rp.service.Create(tableName, unit)
-	if err == service.ErrTableNotFound {
+	switch {
+	case err == service.ErrRecordNotFound || err == service.ErrTableNotFound:
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
 		return
-	} else if err != nil {
+	case errors.As(err, &service.ErrType{}) || errors.As(err, &service.ErrCannotBeNull{}):
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	case err != nil:
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to insert record"))
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("last insert id %d", lastInsertedId)))
 }
@@ -160,14 +168,21 @@ func (rp *requestProcessor) updateRecord(w http.ResponseWriter, r *http.Request)
 		unit[k] = urlVals.Get(k)
 	}
 
-	if err := rp.service.UpdateById(tableName, id, unit); err == service.ErrRecordNotFound || err == service.ErrTableNotFound {
+	switch err := rp.service.UpdateById(tableName, id, unit); {
+	case err == service.ErrRecordNotFound || err == service.ErrTableNotFound:
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
 		return
-	} else if err != nil {
+	case err == service.ErrMissingUpdData || errors.As(err, &service.ErrType{}) || errors.As(err, &service.ErrCannotBeNull{}):
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	case err != nil:
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to update record"))
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("updated record id %d", id)))
 }

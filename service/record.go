@@ -7,6 +7,7 @@ import (
 	"hw6coursera/internal"
 	"hw6coursera/repository"
 	"log"
+	"sort"
 	"strconv"
 )
 
@@ -15,11 +16,6 @@ const (
 	DefaultOffset = 0
 
 	encodedNull = "%00"
-)
-
-var (
-	ErrTableNotFound  = fmt.Errorf("table not found")
-	ErrRecordNotFound = fmt.Errorf("record not found")
 )
 
 type RecordManager struct {
@@ -36,6 +32,8 @@ func (r *RecordManager) GetAllTables() ([]byte, error) {
 	for n := range r.Schema {
 		tablesList = append(tablesList, n)
 	}
+
+	sort.Strings(tablesList) // нужно быть предсказуемым на тестах...
 
 	b, err := json.MarshalIndent(tablesList, "", "    ")
 	if err != nil {
@@ -236,7 +234,7 @@ func validateDataToCreate(data map[string]string, tableStruct internal.Table) (m
 			unit[c.Name] = validValue
 
 		} else if !c.Nullable { //ругаемся на попытку установить null в not-null
-			return nil, fmt.Errorf("%s cannot be null", c.Name)
+			return nil, ErrCannotBeNull{c.Name}
 		}
 	}
 	return unit, nil
@@ -246,7 +244,7 @@ func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
 	if c.Nullable && value == encodedNull {
 		return nil, nil
 	} else if !c.Nullable && value == encodedNull {
-		return nil, fmt.Errorf("%s cannot be null", c.Name)
+		return nil, ErrCannotBeNull{c.Name}
 	}
 
 	//value != encodedNull
@@ -263,7 +261,7 @@ func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("invalid type %s", c.Name)
+		return nil, ErrType{c.Name}
 	}
 	return a, nil
 }
@@ -286,7 +284,7 @@ func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (m
 		}
 	}
 	if len(unit) == 0 {
-		return nil, fmt.Errorf("missing data to update")
+		return nil, ErrMissingUpdData
 	}
 	return unit, nil
 }

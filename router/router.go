@@ -18,17 +18,20 @@ type RequestProcessor interface {
 type Router struct {
 	tableAndIdPattern *regexp.Regexp
 	tablePattern      *regexp.Regexp
+	showTablesPattern *regexp.Regexp
 
 	RequestProcessor
 }
 
 func NewRouter(s *service.Service) *Router {
 	tableAndIdPattern := regexp.MustCompile(`\A\/\w+\/\d+\/?\z`)
-	tablePattern := regexp.MustCompile(`\A\/\w+(?:\?\w+=\w+)?(?:&\w+=\w+)?\/?\z`)
+	tablePattern := regexp.MustCompile(`\A\/\w+(?:\?\w+=\w+)?(?:&\w+=\w+)*\/?\z`)
+	showTablesPattern := regexp.MustCompile(`\A\/\z`)
 	return &Router{
 		RequestProcessor:  newRequectProcessor(s),
 		tableAndIdPattern: tableAndIdPattern,
 		tablePattern:      tablePattern,
+		showTablesPattern: showTablesPattern,
 	}
 }
 
@@ -54,7 +57,11 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-	default:
+	case router.showTablesPattern.MatchString(r.RequestURI):
 		router.getAllTables(w, r)
+	default:
+		// router.getAllTables(w, r)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("page not found"))
 	}
 }
