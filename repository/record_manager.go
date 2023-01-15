@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hw6coursera/internal"
 	"log"
+	"strconv"
 	"strings"
 )
 
@@ -208,7 +209,16 @@ func extractSqlVals(tableStruct internal.Table, dest []interface{}) (map[string]
 
 		switch value := value.(type) { //байты преобразуем в строку, остальное просто отдаём
 		case []byte:
-			unit[c.Name] = string(value)
+			str := string(value)
+			if c.ColumnType == internal.FloatType { // отдадим в json число а не строку с числом
+				floatValue, err := strconv.ParseFloat(str, 64)
+				if err != nil {
+					return nil, fmt.Errorf("parse float error")
+				}
+				unit[c.Name] = floatValue
+			} else {
+				unit[c.Name] = str
+			}
 		default:
 			unit[c.Name] = value
 		}

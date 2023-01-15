@@ -1,5 +1,5 @@
+# docker-compose
 run: dep build start
-
 dep:
 	go mod download
 	go mod vendor
@@ -18,7 +18,7 @@ down-test-db:
 test:
 	go test ./...
 
-# локальный запуск базы и приложения
+# локальный запуск приложения (и базы для него)
 DIR := ${CURDIR}
 up-local-db:
 	docker run -p 3366:3306 -v $(DIR)/init-db:/docker-entrypoint-initdb.d -e MYSQL_ROOT_PASSWORD=1234 -e MYSQL_DATABASE=golang -d --name local-mysql --rm mysql

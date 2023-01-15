@@ -21,10 +21,10 @@ import (
 )
 
 var (
-	client = &http.Client{Timeout: 180 * time.Second}
+	client = &http.Client{Timeout: time.Second}
 )
 
-func prepareTestApis(db *sql.DB) {
+func prepareTestApis(db *sql.DB) error {
 
 	qs := []string{
 		`DROP TABLE IF EXISTS items_test;`,
@@ -40,7 +40,7 @@ func prepareTestApis(db *sql.DB) {
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 
 		`INSERT INTO items_test (title, description, updated, rating, level) VALUES
-		('database/sql', 'Рассказать про базы данных', 'rvasily', '5.0', '15'),
+		('database/sql', 'Рассказать про базы данных', 'rvasily', '2.71828182', '15'),
 		('memcache', 'Рассказать про мемкеш с примером использования', NULL, '0.0', '80');`,
 
 		`DROP TABLE IF EXISTS users_test;`,
@@ -62,12 +62,13 @@ func prepareTestApis(db *sql.DB) {
 	for _, q := range qs {
 		_, err := db.Exec(q)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
+	return nil
 }
 
-func cleanupTestApis(db *sql.DB) {
+func cleanupTestApis(db *sql.DB) error {
 	qs := []string{
 		"DROP TABLE IF EXISTS items_test;",
 		"DROP TABLE IF EXISTS users_test;",
@@ -75,9 +76,10 @@ func cleanupTestApis(db *sql.DB) {
 	for _, q := range qs {
 		_, err := db.Exec(q)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func TestApis(t *testing.T) {
@@ -86,7 +88,11 @@ func TestApis(t *testing.T) {
 		panic(err)
 	}
 	defer db.Close()
-	prepareTestApis(db)
+	if err := prepareTestApis(db); err != nil {
+		log.Printf("failed to prepare tests: %v", err)
+		assert.Equal(t, nil, err)
+		return
+	}
 
 	defer cleanupTestApis(db)
 
@@ -95,7 +101,8 @@ func TestApis(t *testing.T) {
 	service := service.NewService(repo, explorer)
 	if err := service.InitSchema(); err != nil {
 		log.Printf("failed to init database shcema: %v", err)
-		panic(err)
+		assert.Equal(t, nil, err)
+		return
 	}
 	router := router.NewRouter(service)
 
@@ -108,14 +115,14 @@ func TestApis(t *testing.T) {
 			"description": "Рассказать про базы данных",
 			"updated":     "rvasily",
 			"level":       15,
-			"rating":      "5.00",
+			"rating":      2.72,
 		},
 		{
 			"id":          2,
 			"title":       "memcache",
 			"description": "Рассказать про мемкеш с примером использования",
 			"level":       80,
-			"rating":      "0.00",
+			"rating":      0,
 		},
 	}
 	jsonItems, _ := json.MarshalIndent(tableItemsContent, "", "    ")
