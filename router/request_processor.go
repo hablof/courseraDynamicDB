@@ -28,15 +28,16 @@ func (rp *requestProcessor) deleteRecord(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := rp.service.DeleteById(tableName, id); err == service.ErrRecordNotFound {
+	switch err := rp.service.DeleteById(tableName, id); {
+	case err == service.ErrRecordNotFound:
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("record not found"))
 		return
-	} else if err == service.ErrTableNotFound {
+	case err == service.ErrTableNotFound:
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("unknown table"))
 		return
-	} else if err != nil {
+	case err != nil:
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -65,11 +66,12 @@ func (rp *requestProcessor) getRecords(w http.ResponseWriter, r *http.Request) {
 	limit := getIntFieldOrDefault(r, limitField, service.DefaultLimit)
 	offset := getIntFieldOrDefault(r, offsetField, service.DefaultOffset)
 	data, err := rp.service.GetAllRecords(tableName, limit, offset)
-	if err == service.ErrTableNotFound {
+	switch {
+	case err == service.ErrTableNotFound:
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("unknown table"))
 		return
-	} else if err != nil {
+	case err != nil:
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to get records"))
 		return
@@ -91,15 +93,16 @@ func (rp *requestProcessor) getSingleRecord(w http.ResponseWriter, r *http.Reque
 	}
 
 	data, err := rp.service.GetById(tableName, id)
-	if err == service.ErrRecordNotFound {
+	switch {
+	case err == service.ErrRecordNotFound:
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("record not found"))
 		return
-	} else if err == service.ErrTableNotFound {
+	case err == service.ErrTableNotFound:
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("unknown table"))
 		return
-	} else if err != nil {
+	case err != nil:
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("unable to service"))
 		return
@@ -108,14 +111,12 @@ func (rp *requestProcessor) getSingleRecord(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application-json")
 	w.Write(data)
-
 }
 
 // InsertRecord implements RequestProcessor
 func (rp *requestProcessor) insertRecord(w http.ResponseWriter, r *http.Request) {
 	tableName := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/"), "/")
 
-	// if r.Header.Values("content-type")
 	if err := r.ParseForm(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

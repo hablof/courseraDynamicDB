@@ -28,10 +28,10 @@ func NewRouter(s *service.Service) *Router {
 	tablePattern := regexp.MustCompile(`\A\/\w+(?:\?\w+=\w+)?(?:&\w+=\w+)*\/?\z`)
 	showTablesPattern := regexp.MustCompile(`\A\/\z`)
 	return &Router{
-		RequestProcessor:  newRequectProcessor(s),
 		tableAndIdPattern: tableAndIdPattern,
 		tablePattern:      tablePattern,
 		showTablesPattern: showTablesPattern,
+		RequestProcessor:  newRequectProcessor(s),
 	}
 }
 

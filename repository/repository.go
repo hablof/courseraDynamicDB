@@ -8,7 +8,6 @@ import (
 //go:generate mockgen -source=repository.go -destination=mocks/mock.go
 
 type Explorer interface {
-	//Connect(driverName string, dataSourceName string) (sql.DB, error)
 	GetTableNames() ([]string, error)
 	GetColumns(tableName string) ([]internal.Column, error)
 }
@@ -28,7 +27,6 @@ type Repository struct {
 
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{
-
 		Explorer:      newExplorer(db),
 		RecordManager: newRecordManager(db),
 	}

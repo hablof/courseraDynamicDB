@@ -28,6 +28,7 @@ type RecordManager struct {
 func (r *RecordManager) GetAllTables() ([]byte, error) {
 	log.Println("getting all tables...")
 
+	// чтобы получить список таблиц не ходим в базу
 	tablesList := make([]string, 0, len(r.Schema))
 	for n := range r.Schema {
 		tablesList = append(tablesList, n)
@@ -35,12 +36,12 @@ func (r *RecordManager) GetAllTables() ([]byte, error) {
 
 	sort.Strings(tablesList) // нужно быть предсказуемым на тестах...
 
-	b, err := json.MarshalIndent(tablesList, "", "    ")
+	jsonBytes, err := json.MarshalIndent(tablesList, "", "    ")
 	if err != nil {
 		log.Printf("unable to serialize data: %+v", err)
 		return nil, err
 	}
-	return b, nil
+	return jsonBytes, nil
 }
 
 // Create implements RecordService
@@ -77,16 +78,17 @@ func (r *RecordManager) DeleteById(tableName string, id int) error {
 		return ErrTableNotFound
 	}
 
-	primaryKey, err := getPKColumnName(tableStruct)
+	primaryKey, err := getPrimaryKeyColumnName(tableStruct)
 	if err != nil {
 		log.Printf("unable to get primary key name: %+v", err)
 		return err
 	}
 
-	if err := r.repo.DeleteById(tableStruct, primaryKey, id); err == repository.ErrRowNotFound {
+	switch err := r.repo.DeleteById(tableStruct, primaryKey, id); {
+	case err == repository.ErrRowNotFound:
 		log.Printf("record (id=%d) not found", id)
 		return ErrRecordNotFound
-	} else if err != nil {
+	case err != nil:
 		log.Printf("unable to delete record: %+v", err)
 		return err
 	}
@@ -103,23 +105,23 @@ func (r *RecordManager) GetAllRecords(tableName string, limit int, offset int) (
 		return nil, ErrTableNotFound
 	}
 
-	data, err := r.repo.GetAllRecords(tableStruct, limit, offset)
+	records, err := r.repo.GetAllRecords(tableStruct, limit, offset)
 	if err != nil {
 		log.Printf("unable to get all records: %+v", err)
 		return nil, err
 	}
 
 	//поля с нуллами не отдаём
-	for _, elem := range data {
-		removeNulls(elem)
+	for _, record := range records {
+		removeNulls(record)
 	}
 
-	b, err := json.MarshalIndent(data, "", "    ")
+	jsonBytes, err := json.MarshalIndent(records, "", "    ")
 	if err != nil {
 		log.Printf("unable to serialize data: %+v", err)
 		return nil, err
 	}
-	return b, nil
+	return jsonBytes, nil
 }
 
 // GetById implements RecordService
@@ -132,13 +134,13 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 		return nil, ErrTableNotFound
 	}
 
-	primaryKey, err := getPKColumnName(tableStruct)
+	primaryKey, err := getPrimaryKeyColumnName(tableStruct)
 	if err != nil {
 		log.Printf("unable to get primary key name: %+v", err)
 		return nil, err
 	}
 
-	data, err := r.repo.GetById(tableStruct, primaryKey, id)
+	record, err := r.repo.GetById(tableStruct, primaryKey, id)
 	if err == repository.ErrRowNotFound {
 		log.Printf("record (id=%d) not found", id)
 		return nil, ErrRecordNotFound
@@ -148,23 +150,14 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 	}
 
 	//поля с нуллами не отдаём
-	removeNulls(data)
+	removeNulls(record)
 
-	b, err := json.MarshalIndent(data, "", "    ")
+	jsonBytes, err := json.MarshalIndent(record, "", "    ")
 	if err != nil {
 		log.Printf("unable to serialize data: %+v", err)
 		return nil, err
 	}
-	return b, nil
-}
-
-// Это безопасно?
-func removeNulls(data map[string]interface{}) {
-	for k, v := range data {
-		if v == nil {
-			delete(data, k)
-		}
-	}
+	return jsonBytes, nil
 }
 
 // UpdateById implements RecordService
@@ -183,16 +176,17 @@ func (r *RecordManager) UpdateById(tableName string, id int, data map[string]str
 		return err
 	}
 
-	primaryKey, err := getPKColumnName(tableStruct)
+	primaryKey, err := getPrimaryKeyColumnName(tableStruct)
 	if err != nil {
 		log.Printf("unable to get primary key name: %+v", err)
 		return err
 	}
 
-	if err := r.repo.UpdateById(tableStruct, primaryKey, id, unit); err == repository.ErrRowNotFound {
+	switch err := r.repo.UpdateById(tableStruct, primaryKey, id, unit); {
+	case err == repository.ErrRowNotFound:
 		log.Printf("record (id=%d) not found", id)
 		return ErrRecordNotFound
-	} else if err != nil {
+	case err != nil:
 		log.Printf("unable to update record by id: %+v", err)
 		return err
 	}
@@ -240,6 +234,29 @@ func validateDataToCreate(data map[string]string, tableStruct internal.Table) (m
 	return unit, nil
 }
 
+// Для обновления считаем, что отсутствующие поля не обновляются
+func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+	unit := make(map[string]interface{}, len(tableStruct.Columns))
+	for _, c := range tableStruct.Columns {
+
+		if c.IsPrimaryKey { //auto-increnment не трогаем
+			continue
+		}
+
+		if value, ok := data[c.Name]; ok { //пропускаем только те ключи, которые есть в схеме БД и у которых не null значения
+			validValue, err := parseTypeAndNull(value, c)
+			if err != nil {
+				return nil, err
+			}
+			unit[c.Name] = validValue
+		}
+	}
+	if len(unit) == 0 {
+		return nil, ErrMissingUpdData
+	}
+	return unit, nil
+}
+
 func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
 	if c.Nullable && value == encodedNull {
 		return nil, nil
@@ -266,30 +283,16 @@ func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
 	return a, nil
 }
 
-// Для обновления считаем, что отсутствующие поля не обновляются
-func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
-	unit := make(map[string]interface{}, len(tableStruct.Columns))
-	for _, c := range tableStruct.Columns {
-
-		if c.IsPrimaryKey { //auto-increnment не трогаем
-			continue
-		}
-
-		if value, ok := data[c.Name]; ok { //пропускаем только те ключи, которые есть в схеме БД и у которых не null значения
-			validValue, err := parseTypeAndNull(value, c)
-			if err != nil {
-				return nil, err
-			}
-			unit[c.Name] = validValue
+func removeNulls(data map[string]interface{}) {
+	// Это безопасно?
+	for k, v := range data {
+		if v == nil {
+			delete(data, k)
 		}
 	}
-	if len(unit) == 0 {
-		return nil, ErrMissingUpdData
-	}
-	return unit, nil
 }
 
-func getPKColumnName(t internal.Table) (string, error) {
+func getPrimaryKeyColumnName(t internal.Table) (string, error) {
 	for _, c := range t.Columns {
 		if c.IsPrimaryKey {
 			return c.Name, nil

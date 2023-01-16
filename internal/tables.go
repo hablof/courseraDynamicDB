@@ -16,7 +16,7 @@ type Table struct {
 
 type Column struct {
 	Name         string
-	ColumnType   string // "VARCHAR", "TEXT", "NVARCHAR", "DECIMAL", "INT", "BIGINT" ....
+	ColumnType   string // одна из констант
 	Nullable     bool
 	IsPrimaryKey bool
 }

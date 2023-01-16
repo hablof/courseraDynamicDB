@@ -18,19 +18,21 @@ type recordManager struct {
 // Create implements RecordManager
 func (rm *recordManager) Create(table internal.Table, data map[string]interface{}) (lastInsertedId int, err error) {
 	fields, placehoders, sqlVals := getInsertParams(data)
-	q := "INSERT INTO %s (%s) VALUES (%s);"
-	query := fmt.Sprintf(q, table.Name, fields, placehoders)
-	res, err := rm.db.Exec(query, sqlVals...)
+	queryTemplate := "INSERT INTO %s (%s) VALUES (%s);"
+	queryString := fmt.Sprintf(queryTemplate, table.Name, fields, placehoders)
+	res, err := rm.db.Exec(queryString, sqlVals...)
 	if err != nil {
 		return 0, fmt.Errorf("error on inserting values: %v", err)
 	}
-	i, err := res.RowsAffected()
+
+	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		log.Printf("error on RowsAffected(): %v", err)
 	}
-	if i != 1 {
-		log.Printf("wrong behaviour, affectet rows: %d\n", i)
+	if rowsAffected != 1 {
+		log.Printf("wrong behaviour, affectet rows: %d\n", rowsAffected)
 	}
+
 	lastInsertId, err := res.LastInsertId()
 	if err != nil {
 		log.Printf("error on LastInsertId(): %v", err)
@@ -40,21 +42,20 @@ func (rm *recordManager) Create(table internal.Table, data map[string]interface{
 
 // DeleteById implements RecordManager
 func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id int) (err error) {
-	q := "DELETE FROM %s WHERE %s = ?;"
-	query := fmt.Sprintf(q, table.Name, primaryKey)
-
-	res, err := rm.db.Exec(query, id)
+	queryTemplate := "DELETE FROM %s WHERE %s = ?;"
+	queryString := fmt.Sprintf(queryTemplate, table.Name, primaryKey)
+	res, err := rm.db.Exec(queryString, id)
 	if err != nil {
 		return fmt.Errorf("error on deleting values: %v", err)
 	}
-	i, err := res.RowsAffected()
+
+	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("error on rowsaffected(): %v", err)
 	}
-
-	if i == 0 {
+	if rowsAffected == 0 {
 		return ErrRowNotFound
-	} else if i > 1 {
+	} else if rowsAffected > 1 {
 		log.Println("affected more then 1 row")
 	}
 	return nil
@@ -63,10 +64,9 @@ func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id 
 // GetAllRecords implements RecordManager
 func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset int) (data []map[string]interface{}, err error) {
 	fields := getQueryFields(table)
-	q := "SELECT %s FROM %s LIMIT ? OFFSET ?;"
-	query := fmt.Sprintf(q, fields, table.Name)
-
-	rows, err := rm.db.Query(query, limit, offset)
+	queryTemplate := "SELECT %s FROM %s LIMIT ? OFFSET ?;"
+	queryString := fmt.Sprintf(queryTemplate, fields, table.Name)
+	rows, err := rm.db.Query(queryString, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get records due to error: %+v", err)
 	}
@@ -80,7 +80,9 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 	content := make([]map[string]interface{}, 0)
 	dest := initScanDestination(table)
 	for rows.Next() {
-		rows.Scan(dest...)
+		if err := rows.Scan(dest...); err != nil {
+			return nil, err
+		}
 		unit, err := extractSqlVals(table, dest)
 		if err != nil {
 			return nil, err
@@ -93,19 +95,17 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 // GetById implements RecordManager
 func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int) (data map[string]interface{}, err error) {
 	fields := getQueryFields(table)
-	q := "SELECT %s FROM %s WHERE %s = ?;"
-	query := fmt.Sprintf(q, fields, table.Name, primaryKey)
-
-	row := rm.db.QueryRow(query, id)
+	queryTemplate := "SELECT %s FROM %s WHERE %s = ?;"
+	queryString := fmt.Sprintf(queryTemplate, fields, table.Name, primaryKey)
+	row := rm.db.QueryRow(queryString, id)
 	if err := row.Err(); err != nil {
 		return nil, fmt.Errorf("unable to get records due to error: %+v", err)
 	}
 
 	dest := initScanDestination(table)
-	if err = row.Scan(dest...); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrRowNotFound
-		}
+	if err := row.Scan(dest...); err == sql.ErrNoRows {
+		return nil, ErrRowNotFound
+	} else if err != nil {
 		return nil, err
 	}
 	unit, err := extractSqlVals(table, dest)
@@ -117,27 +117,27 @@ func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int
 
 // UpdateById implements RecordManager
 func (rm *recordManager) UpdateById(table internal.Table, primaryKey string, id int, data map[string]interface{}) (err error) {
-	keyValues, sqlVals := getUpdateParams(data)
+	palceholders, sqlVals := getUpdateParams(data)
 	if len(sqlVals) == 0 {
 		return fmt.Errorf("required at least one field to update")
 	}
 
-	q := "UPDATE %s SET %s WHERE %s = ?;"
-	query := fmt.Sprintf(q, table.Name, keyValues, primaryKey)
+	queryTemplate := "UPDATE %s SET %s WHERE %s = ?;"
+	queryString := fmt.Sprintf(queryTemplate, table.Name, palceholders, primaryKey)
 	sqlVals = append(sqlVals, id)
-	result, err := rm.db.Exec(query, sqlVals...)
+	result, err := rm.db.Exec(queryString, sqlVals...)
 	if err != nil {
 		return fmt.Errorf("error on updating values: %v", err)
 	}
 
-	i, err := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("error on rowsaffected(): %v", err)
 	}
 
-	if i == 0 {
+	if rowsAffected == 0 {
 		return ErrRowNotFound
-	} else if i > 1 {
+	} else if rowsAffected > 1 {
 		return fmt.Errorf("affected more then 1 row")
 	}
 	return nil
@@ -162,7 +162,7 @@ func getInsertParams(unit map[string]interface{}) (fieldNames string, placehoder
 	return strings.Join(names, ", "), strings.Join(placehoders, ", "), output
 }
 
-func getUpdateParams(unit map[string]interface{}) (fieldPlacehoderStr string, data []interface{}) {
+func getUpdateParams(unit map[string]interface{}) (placehoderStr string, data []interface{}) {
 	length := len(unit)
 	placehoders := make([]string, 0, length)
 	output := make([]interface{}, 0, length)
@@ -205,21 +205,21 @@ func extractSqlVals(tableStruct internal.Table, dest []interface{}) (map[string]
 		if !ok {
 			return nil, fmt.Errorf("interface indirect error")
 		}
-		value := *ptrToInterface
+		scannedValue := *ptrToInterface
 
-		switch value := value.(type) { //байты преобразуем в строку, остальное просто отдаём
-		case []byte:
+		switch value := scannedValue.(type) {
+		case []byte: // байты преобразуем в строку...
 			str := string(value)
-			if c.ColumnType == internal.FloatType { // отдадим в json число а не строку с числом
+			if c.ColumnType == internal.FloatType { // отдадим в json число, а не строку с числом
 				floatValue, err := strconv.ParseFloat(str, 64)
 				if err != nil {
-					return nil, fmt.Errorf("parse float error")
+					return nil, fmt.Errorf("parse float error: %v", err)
 				}
 				unit[c.Name] = floatValue
 			} else {
 				unit[c.Name] = str
 			}
-		default:
+		default: /// ...остальное просто отдаём
 			unit[c.Name] = value
 		}
 	}
