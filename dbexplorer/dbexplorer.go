@@ -1,12 +1,12 @@
 package dbexplorer
 
 import (
-	"hw6coursera/internal"
+	"hw6coursera/dto"
 	"hw6coursera/repository"
 )
 
 type SchemeParser interface {
-	ParseSchema() (internal.Schema, error)
+	ParseSchema() (dto.Schema, error)
 }
 
 type DBexplorer struct {

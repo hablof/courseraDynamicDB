@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"hw6coursera/service"
-	mock_service "hw6coursera/service/mocks"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -23,7 +22,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 		id                int
 		expectedSatusCode int
 		expectedBody      string
-		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, id int)
+		mockBehaviour     func(ms *service.MockRecordService, tableName string, id int)
 	}{
 		{
 			name:              "OK",
@@ -32,7 +31,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			id:                1,
 			expectedSatusCode: 200,
 			expectedBody:      "deleted record id 1",
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().DeleteById(tableName, id).Return(nil)
 			},
 		},
@@ -43,7 +42,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			id:                0,
 			expectedSatusCode: 500,
 			expectedBody:      "",
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 			},
 		},
 		{
@@ -53,7 +52,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			id:                1,
 			expectedSatusCode: 500,
 			expectedBody:      "",
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().DeleteById(tableName, id).Return(fmt.Errorf("some service error"))
 			},
 		},
@@ -64,7 +63,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			id:                1,
 			expectedSatusCode: 404,
 			expectedBody:      "unknown table",
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().DeleteById(tableName, id).Return(service.ErrTableNotFound)
 			},
 		},
@@ -75,7 +74,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			id:                1,
 			expectedSatusCode: 404,
 			expectedBody:      "record not found",
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().DeleteById(tableName, id).Return(service.ErrRecordNotFound)
 			},
 		},
@@ -86,7 +85,7 @@ func TestRouter_deleteRecord(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			recordService := mock_service.NewMockRecordService(c)
+			recordService := service.NewMockRecordService(c)
 			tc.mockBehaviour(recordService, tc.tableName, tc.id)
 
 			servicies := &service.Service{
@@ -111,14 +110,14 @@ func TestRouter_getAllTables(t *testing.T) {
 		urlPath           string
 		expectedSatusCode int
 		expectedBody      string
-		mockBehaviour     func(ms *mock_service.MockRecordService)
+		mockBehaviour     func(ms *service.MockRecordService)
 	}{
 		{
 			name:              "OK",
 			urlPath:           "/",
 			expectedSatusCode: 200,
 			expectedBody:      "[\n\t\"haha\",\n\t\"hoho\"\n]",
-			mockBehaviour: func(ms *mock_service.MockRecordService) {
+			mockBehaviour: func(ms *service.MockRecordService) {
 				ms.EXPECT().GetAllTables().Return([]byte("[\n\t\"haha\",\n\t\"hoho\"\n]"), nil)
 			},
 		},
@@ -127,7 +126,7 @@ func TestRouter_getAllTables(t *testing.T) {
 			urlPath:           "/",
 			expectedSatusCode: 500,
 			expectedBody:      "unable to get tables",
-			mockBehaviour: func(ms *mock_service.MockRecordService) {
+			mockBehaviour: func(ms *service.MockRecordService) {
 				ms.EXPECT().GetAllTables().Return([]byte("[\n\t\"haha\",\n\t\"hoho\"\n]"), fmt.Errorf("unable to serialize data"))
 			},
 		},
@@ -138,7 +137,7 @@ func TestRouter_getAllTables(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			recordService := mock_service.NewMockRecordService(c)
+			recordService := service.NewMockRecordService(c)
 			tc.mockBehaviour(recordService)
 
 			servicies := &service.Service{
@@ -166,7 +165,7 @@ func TestRouter_getRecords(t *testing.T) {
 		tableName         string
 		limit             int
 		offset            int
-		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, limit int, offset int)
+		mockBehaviour     func(ms *service.MockRecordService, tableName string, limit int, offset int)
 	}{
 		{
 			name:              "OK",
@@ -176,7 +175,7 @@ func TestRouter_getRecords(t *testing.T) {
 			tableName:         "table",
 			limit:             5,
 			offset:            0,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, limit int, offset int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, limit int, offset int) {
 				ms.EXPECT().GetAllRecords(tableName, limit, offset).Return([]byte(bigJSON), nil)
 			},
 		},
@@ -188,7 +187,7 @@ func TestRouter_getRecords(t *testing.T) {
 			tableName:         "table",
 			limit:             1,
 			offset:            2,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, limit int, offset int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, limit int, offset int) {
 				ms.EXPECT().GetAllRecords(tableName, limit, offset).Return([]byte(smallJSON), nil)
 			},
 		},
@@ -200,7 +199,7 @@ func TestRouter_getRecords(t *testing.T) {
 			tableName:         "table",
 			limit:             5,
 			offset:            0,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, limit int, offset int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, limit int, offset int) {
 				ms.EXPECT().GetAllRecords(tableName, limit, offset).Return(nil, fmt.Errorf("some service error"))
 			},
 		},
@@ -212,7 +211,7 @@ func TestRouter_getRecords(t *testing.T) {
 			tableName:         "table",
 			limit:             5,
 			offset:            0,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, limit int, offset int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, limit int, offset int) {
 				ms.EXPECT().GetAllRecords(tableName, limit, offset).Return(nil, service.ErrTableNotFound)
 			},
 		},
@@ -223,7 +222,7 @@ func TestRouter_getRecords(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			recordService := mock_service.NewMockRecordService(c)
+			recordService := service.NewMockRecordService(c)
 			tc.mockBehaviour(recordService, tc.tableName, tc.limit, tc.offset)
 
 			servicies := &service.Service{
@@ -251,7 +250,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 		expectedBody      string
 		tableName         string
 		id                int
-		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, id int)
+		mockBehaviour     func(ms *service.MockRecordService, tableName string, id int)
 	}{
 		{
 			name:              "OK",
@@ -260,7 +259,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			expectedBody:      smallJSON,
 			tableName:         "table",
 			id:                3,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().GetById(tableName, id).Return([]byte(smallJSON), nil)
 			},
 		},
@@ -271,7 +270,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			expectedBody:      "unable to service",
 			tableName:         "table",
 			id:                3,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().GetById(tableName, id).Return(nil, fmt.Errorf("some service error"))
 			},
 		},
@@ -282,7 +281,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			expectedBody:      "unknown table",
 			tableName:         "table",
 			id:                3,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().GetById(tableName, id).Return(nil, service.ErrTableNotFound)
 			},
 		},
@@ -293,7 +292,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			expectedBody:      "record not found",
 			tableName:         "table",
 			id:                3,
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int) {
 				ms.EXPECT().GetById(tableName, id).Return(nil, service.ErrRecordNotFound)
 			},
 		},
@@ -304,7 +303,7 @@ func TestRouter_getSingleRecord(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			recordService := mock_service.NewMockRecordService(c)
+			recordService := service.NewMockRecordService(c)
 			tc.mockBehaviour(recordService, tc.tableName, tc.id)
 
 			servicies := &service.Service{
@@ -334,7 +333,7 @@ func TestRouter_updateRecord(t *testing.T) {
 		id                 int
 		requestData        map[string]string
 		updateDataToExpect map[string]string
-		mockBehaviour      func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string)
+		mockBehaviour      func(ms *service.MockRecordService, tableName string, id int, data map[string]string)
 	}{
 		{
 			name:               "OK",
@@ -345,7 +344,7 @@ func TestRouter_updateRecord(t *testing.T) {
 			id:                 3,
 			requestData:        map[string]string{"some field": "new value", "another field": "another value"},
 			updateDataToExpect: map[string]string{"some field": "new value", "another field": "another value"},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int, data map[string]string) {
 				ms.EXPECT().UpdateById(tableName, id, data).Return(nil)
 			},
 		},
@@ -358,7 +357,7 @@ func TestRouter_updateRecord(t *testing.T) {
 			id:                 3,
 			requestData:        map[string]string{},
 			updateDataToExpect: map[string]string{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int, data map[string]string) {
 				ms.EXPECT().UpdateById(tableName, id, data).Return(fmt.Errorf("missing data to update"))
 			},
 		},
@@ -371,7 +370,7 @@ func TestRouter_updateRecord(t *testing.T) {
 			id:                 0,
 			requestData:        map[string]string{},
 			updateDataToExpect: map[string]string{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, id int, data map[string]string) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, id int, data map[string]string) {
 			},
 		},
 	}
@@ -381,7 +380,7 @@ func TestRouter_updateRecord(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			recordService := mock_service.NewMockRecordService(c)
+			recordService := service.NewMockRecordService(c)
 			tc.mockBehaviour(recordService, tc.tableName, tc.id, tc.updateDataToExpect)
 
 			servicies := &service.Service{
@@ -417,7 +416,7 @@ func TestRouter_insertRecord(t *testing.T) {
 		lastInsertId      int
 		requestData       map[string]string
 		dataToExpect      map[string]string
-		mockBehaviour     func(ms *mock_service.MockRecordService, tableName string, data map[string]string)
+		mockBehaviour     func(ms *service.MockRecordService, tableName string, data map[string]string)
 	}{
 		{
 			name:              "OK",
@@ -428,7 +427,7 @@ func TestRouter_insertRecord(t *testing.T) {
 			lastInsertId:      3,
 			requestData:       map[string]string{"updating field": "new data"},
 			dataToExpect:      map[string]string{"updating field": "new data"},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, data map[string]string) {
 				ms.EXPECT().Create(tableName, data).Return(3, nil)
 			},
 		},
@@ -441,7 +440,7 @@ func TestRouter_insertRecord(t *testing.T) {
 			lastInsertId:      0,
 			requestData:       map[string]string{},
 			dataToExpect:      map[string]string{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, data map[string]string) {
 				ms.EXPECT().Create(tableName, data).Return(0, service.ErrTableNotFound)
 			},
 		},
@@ -454,7 +453,7 @@ func TestRouter_insertRecord(t *testing.T) {
 			lastInsertId:      0,
 			requestData:       map[string]string{},
 			dataToExpect:      map[string]string{},
-			mockBehaviour: func(ms *mock_service.MockRecordService, tableName string, data map[string]string) {
+			mockBehaviour: func(ms *service.MockRecordService, tableName string, data map[string]string) {
 				ms.EXPECT().Create(tableName, data).Return(0, fmt.Errorf("some service error"))
 			},
 		},
@@ -465,7 +464,7 @@ func TestRouter_insertRecord(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			recordService := mock_service.NewMockRecordService(c)
+			recordService := service.NewMockRecordService(c)
 			tc.mockBehaviour(recordService, tc.tableName, tc.dataToExpect)
 
 			servicies := &service.Service{

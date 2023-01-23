@@ -4,8 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"hw6coursera/internal"
-	"log"
+	"hw6coursera/dto"
 	"strings"
 )
 
@@ -14,16 +13,12 @@ type dbExplorer struct {
 }
 
 // GetColumns implements Explorer
-func (e *dbExplorer) GetColumns(tableName string) ([]internal.Column, error) {
+func (e *dbExplorer) GetColumns(tableName string) ([]dto.Column, error) {
 	rows, err := e.db.Query(fmt.Sprintf("SELECT * FROM `%s` LIMIT 1", tableName))
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
+	defer rows.Close()
 
 	sqlColumns, err := rows.ColumnTypes()
 	if err != nil {
@@ -35,10 +30,10 @@ func (e *dbExplorer) GetColumns(tableName string) ([]internal.Column, error) {
 		return nil, err
 	}
 
-	columns := make([]internal.Column, 0, len(sqlColumns))
+	columns := make([]dto.Column, 0, len(sqlColumns))
 	// лучше бы всё это (то, что ниже) делать не в repository, а в dbexplorer?
 	for _, ct := range sqlColumns {
-		col := internal.Column{}
+		col := dto.Column{}
 		col.Name = ct.Name()
 		if col.Name == primaryKey {
 			col.IsPrimaryKey = true
@@ -51,13 +46,13 @@ func (e *dbExplorer) GetColumns(tableName string) ([]internal.Column, error) {
 		typeName := ct.DatabaseTypeName() // "VARCHAR", "TEXT", "NVARCHAR", "DECIMAL", "INT", "BIGINT" ...
 		switch {
 		case strings.Contains(typeName, "INT"):
-			col.ColumnType = internal.IntType
+			col.ColumnType = dto.IntType
 		case strings.Contains(typeName, "FLOAT") || strings.Contains(typeName, "DECIMAL") || strings.Contains(typeName, "DOUBLE"):
-			col.ColumnType = internal.FloatType
+			col.ColumnType = dto.FloatType
 		case strings.Contains(typeName, "TEXT") || strings.Contains(typeName, "CHAR"):
-			col.ColumnType = internal.StringType
+			col.ColumnType = dto.StringType
 		default:
-			col.ColumnType = internal.UnknownType
+			col.ColumnType = dto.UnknownType
 		}
 		columns = append(columns, col)
 	}
@@ -70,11 +65,7 @@ func (e *dbExplorer) GetTableNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err = tableRecords.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
+	defer tableRecords.Close()
 
 	tableNames := make([]string, 0)
 

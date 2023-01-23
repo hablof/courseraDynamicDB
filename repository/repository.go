@@ -2,22 +2,22 @@ package repository
 
 import (
 	"database/sql"
-	"hw6coursera/internal"
+	"hw6coursera/dto"
 )
 
-//go:generate mockgen -source=repository.go -destination=mocks/mock.go
+//go:generate mockgen -source=repository.go -destination=mock.go
 
 type Explorer interface {
 	GetTableNames() ([]string, error)
-	GetColumns(tableName string) ([]internal.Column, error)
+	GetColumns(tableName string) ([]dto.Column, error)
 }
 
 type RecordManager interface {
-	GetAllRecords(table internal.Table, limit int, offset int) (data []map[string]interface{}, err error)
-	GetById(table internal.Table, primaryKey string, id int) (data map[string]interface{}, err error)
-	Create(table internal.Table, data map[string]interface{}) (lastInsertedId int, err error)
-	UpdateById(table internal.Table, primaryKey string, id int, data map[string]interface{}) (err error)
-	DeleteById(table internal.Table, primaryKey string, id int) (err error)
+	GetAllRecords(table dto.Table, limit int, offset int) (data []map[string]interface{}, err error)
+	GetById(table dto.Table, primaryKey string, id int) (data map[string]interface{}, err error)
+	Create(table dto.Table, data map[string]interface{}) (lastInsertedId int, err error)
+	UpdateById(table dto.Table, primaryKey string, id int, data map[string]interface{}) (err error)
+	DeleteById(table dto.Table, primaryKey string, id int) (err error)
 }
 
 type Repository struct {

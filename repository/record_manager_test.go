@@ -2,7 +2,7 @@ package repository
 
 import (
 	"fmt"
-	"hw6coursera/internal"
+	"hw6coursera/dto"
 	"log"
 	"testing"
 
@@ -11,25 +11,25 @@ import (
 )
 
 var (
-	testingSchema internal.Schema = map[string]internal.Table{
+	testingSchema dto.Schema = map[string]dto.Table{
 		"example_table_1": {
 			Name: "example_table_1",
-			Columns: []internal.Column{
+			Columns: []dto.Column{
 				{
 					Name:         "primary_key",
-					ColumnType:   internal.IntType,
+					ColumnType:   dto.IntType,
 					Nullable:     false,
 					IsPrimaryKey: true,
 				},
 				{
 					Name:         "name",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     false,
 					IsPrimaryKey: false,
 				},
 				{
 					Name:         "nullable_field",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     true,
 					IsPrimaryKey: false,
 				},
@@ -37,22 +37,22 @@ var (
 		},
 		"example_table_2": {
 			Name: "example_table_2",
-			Columns: []internal.Column{
+			Columns: []dto.Column{
 				{
 					Name:         "primary_column",
-					ColumnType:   internal.IntType,
+					ColumnType:   dto.IntType,
 					Nullable:     false,
 					IsPrimaryKey: true,
 				},
 				{
 					Name:         "field",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     false,
 					IsPrimaryKey: false,
 				},
 				{
 					Name:         "additional_field",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     true,
 					IsPrimaryKey: false,
 				},
@@ -69,7 +69,7 @@ func TestRecordManageer_Create(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		tableStruct   internal.Table
+		tableStruct   dto.Table
 		data          map[string]interface{}
 		expectedQuery string
 		mockBehaviour func(query string)
@@ -120,7 +120,7 @@ func TestRecordManageer_DeleteById(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		tableStruct   internal.Table
+		tableStruct   dto.Table
 		primaryKey    string
 		expectedQuery string
 		id            int
@@ -181,7 +181,7 @@ func TestRecordManageer_GetAllRecords(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		tableStruct   internal.Table
+		tableStruct   dto.Table
 		limit         int
 		offset        int
 		expectedQuery string
@@ -246,7 +246,7 @@ func TestRecordManageer_GetById(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		tableStruct   internal.Table
+		tableStruct   dto.Table
 		primaryKey    string
 		expectedQuery string
 		id            int
@@ -316,7 +316,7 @@ func TestRecordManageer_UpdateById(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		tableStruct   internal.Table
+		tableStruct   dto.Table
 		primaryKey    string
 		id            int
 		data          map[string]interface{}

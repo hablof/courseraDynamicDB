@@ -1,7 +1,7 @@
 package dbexplorer
 
 import (
-	"hw6coursera/internal"
+	"hw6coursera/dto"
 	"hw6coursera/repository"
 	"log"
 )
@@ -11,17 +11,17 @@ type SchemeParserExplorer struct {
 }
 
 // ParseSchema implements SchemeParser
-func (s *SchemeParserExplorer) ParseSchema() (internal.Schema, error) {
+func (s *SchemeParserExplorer) ParseSchema() (dto.Schema, error) {
 	log.Println("getting tables")
 	tableNames, err := s.repoExplorer.GetTableNames()
 	if err != nil {
 		return nil, err
 	}
 
-	sch := make(internal.Schema, len(tableNames))
+	sch := make(dto.Schema, len(tableNames))
 
 	for _, tableName := range tableNames {
-		t := internal.Table{}
+		t := dto.Table{}
 		log.Printf("parsing colunms in table: %s", tableName)
 		cols, err := s.repoExplorer.GetColumns(tableName)
 		if err != nil {

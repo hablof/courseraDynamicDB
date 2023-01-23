@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hw6coursera/dbexplorer"
-	"hw6coursera/internal"
+	"hw6coursera/dto"
 	"hw6coursera/repository"
 	"log"
 	"sort"
@@ -21,7 +21,7 @@ const (
 type RecordManager struct {
 	repo   repository.RecordManager
 	dbe    dbexplorer.SchemeParser
-	Schema internal.Schema
+	Schema dto.Schema
 }
 
 // GetAllTables implements RecordService
@@ -141,10 +141,11 @@ func (r *RecordManager) GetById(tableName string, id int) ([]byte, error) {
 	}
 
 	record, err := r.repo.GetById(tableStruct, primaryKey, id)
-	if err == repository.ErrRowNotFound {
+	switch {
+	case err == repository.ErrRowNotFound:
 		log.Printf("record (id=%d) not found", id)
 		return nil, ErrRecordNotFound
-	} else if err != nil {
+	case err != nil:
 		log.Printf("unable to get record dy id: %+v", err)
 		return nil, err
 	}
@@ -207,12 +208,12 @@ func newRecordService(repo *repository.Repository, dbe dbexplorer.SchemeParser) 
 	return &RecordManager{
 		repo:   repo.RecordManager,
 		dbe:    dbe,
-		Schema: map[string]internal.Table{},
+		Schema: map[string]dto.Table{},
 	}
 }
 
 // Для создания считаем, что отсутствующие поля - попытка установить null
-func validateDataToCreate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+func validateDataToCreate(data map[string]string, tableStruct dto.Table) (map[string]interface{}, error) {
 	unit := make(map[string]interface{}, len(tableStruct.Columns))
 	for _, c := range tableStruct.Columns {
 
@@ -225,9 +226,12 @@ func validateDataToCreate(data map[string]string, tableStruct internal.Table) (m
 			if err != nil {
 				return nil, err
 			}
-			unit[c.Name] = validValue
 
-		} else if !c.Nullable { //ругаемся на попытку установить null в not-null
+			unit[c.Name] = validValue
+			continue
+		}
+
+		if !c.Nullable { //ругаемся на попытку установить null в not-null
 			return nil, ErrCannotBeNull{c.Name}
 		}
 	}
@@ -235,7 +239,7 @@ func validateDataToCreate(data map[string]string, tableStruct internal.Table) (m
 }
 
 // Для обновления считаем, что отсутствующие поля не обновляются
-func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (map[string]interface{}, error) {
+func validateDataToUpdate(data map[string]string, tableStruct dto.Table) (map[string]interface{}, error) {
 	unit := make(map[string]interface{}, len(tableStruct.Columns))
 	for _, c := range tableStruct.Columns {
 
@@ -257,7 +261,7 @@ func validateDataToUpdate(data map[string]string, tableStruct internal.Table) (m
 	return unit, nil
 }
 
-func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
+func parseTypeAndNull(value string, c dto.Column) (interface{}, error) {
 	if c.Nullable && value == encodedNull {
 		return nil, nil
 	} else if !c.Nullable && value == encodedNull {
@@ -269,9 +273,9 @@ func parseTypeAndNull(value string, c internal.Column) (interface{}, error) {
 	var err error
 
 	switch c.ColumnType {
-	case internal.IntType:
+	case dto.IntType:
 		a, err = strconv.Atoi(value)
-	case internal.FloatType:
+	case dto.FloatType:
 		a, err = strconv.ParseFloat(value, 64)
 	default: // stringType || unknownType
 		a = value
@@ -292,7 +296,7 @@ func removeNulls(data map[string]interface{}) {
 	}
 }
 
-func getPrimaryKeyColumnName(t internal.Table) (string, error) {
+func getPrimaryKeyColumnName(t dto.Table) (string, error) {
 	for _, c := range t.Columns {
 		if c.IsPrimaryKey {
 			return c.Name, nil

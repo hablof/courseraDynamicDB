@@ -1,4 +1,4 @@
-package internal
+package dto
 
 const (
 	StringType  = "string"

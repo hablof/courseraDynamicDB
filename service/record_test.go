@@ -2,9 +2,8 @@ package service
 
 import (
 	"fmt"
-	"hw6coursera/internal"
+	"hw6coursera/dto"
 	"hw6coursera/repository"
-	mock_repository "hw6coursera/repository/mocks"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,25 +11,25 @@ import (
 )
 
 var (
-	testingSchema internal.Schema = map[string]internal.Table{
+	testingSchema dto.Schema = map[string]dto.Table{
 		"example_table_1": {
 			Name: "example_table_1",
-			Columns: []internal.Column{
+			Columns: []dto.Column{
 				{
 					Name:         "primary_key",
-					ColumnType:   internal.IntType,
+					ColumnType:   dto.IntType,
 					Nullable:     false,
 					IsPrimaryKey: true,
 				},
 				{
 					Name:         "name",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     false,
 					IsPrimaryKey: false,
 				},
 				{
 					Name:         "nullable_field",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     true,
 					IsPrimaryKey: false,
 				},
@@ -38,22 +37,22 @@ var (
 		},
 		"example_table_2": {
 			Name: "example_table_2",
-			Columns: []internal.Column{
+			Columns: []dto.Column{
 				{
 					Name:         "primary_column",
-					ColumnType:   internal.IntType,
+					ColumnType:   dto.IntType,
 					Nullable:     false,
 					IsPrimaryKey: true,
 				},
 				{
 					Name:         "field",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     false,
 					IsPrimaryKey: false,
 				},
 				{
 					Name:         "additional_field",
-					ColumnType:   internal.StringType,
+					ColumnType:   dto.StringType,
 					Nullable:     true,
 					IsPrimaryKey: false,
 				},
@@ -97,17 +96,17 @@ var (
 func TestService_GetAllTables(t *testing.T) {
 	testCases := []struct {
 		name          string
-		schema        internal.Schema
+		schema        dto.Schema
 		expectedData  string
 		expectedErr   error
-		mockBehaviour func(mr *mock_repository.MockRecordManager)
+		mockBehaviour func(mr *repository.MockRecordManager)
 	}{
 		{
 			name:         "OK",
 			schema:       testingSchema,
 			expectedData: jsonTables,
 			expectedErr:  nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager) {
+			mockBehaviour: func(mr *repository.MockRecordManager) {
 			},
 		},
 	}
@@ -117,7 +116,7 @@ func TestService_GetAllTables(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			mockRepo := mock_repository.NewMockRecordManager(c)
+			mockRepo := repository.NewMockRecordManager(c)
 			recordManager := &RecordManager{
 				repo:   mockRepo,
 				dbe:    nil, ///??????????
@@ -139,13 +138,13 @@ func TestService_GetAllTables(t *testing.T) {
 func TestService_Create(t *testing.T) {
 	testCases := []struct {
 		name             string
-		schema           internal.Schema
+		schema           dto.Schema
 		tableName        string
 		inputData        map[string]string
 		dataToExpect     map[string]interface{}
 		expectedInsertId int
 		expectedErr      error
-		mockBehaviour    func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{})
+		mockBehaviour    func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{})
 	}{
 		{
 			name:             "OK",
@@ -155,7 +154,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			expectedInsertId: 10,
 			expectedErr:      nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 				mr.EXPECT().Create(schema[table], validatedData).Return(10, nil)
 			},
 		},
@@ -167,7 +166,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			expectedInsertId: 20,
 			expectedErr:      nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 				mr.EXPECT().Create(schema[table], validatedData).Return(20, nil)
 			},
 		},
@@ -179,7 +178,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{"name": "name"},
 			expectedInsertId: 30,
 			expectedErr:      nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 				mr.EXPECT().Create(schema[table], validatedData).Return(30, nil)
 			},
 		},
@@ -191,7 +190,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{"name": "name"},
 			expectedInsertId: 40,
 			expectedErr:      nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 				mr.EXPECT().Create(schema[table], validatedData).Return(40, nil)
 			},
 		},
@@ -203,7 +202,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{"name": "name"},
 			expectedInsertId: 40,
 			expectedErr:      nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 				mr.EXPECT().Create(schema[table], validatedData).Return(40, nil)
 			},
 		},
@@ -215,7 +214,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{},
 			expectedInsertId: 0,
 			expectedErr:      ErrTableNotFound,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 			},
 		},
 		{
@@ -226,7 +225,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{},
 			expectedInsertId: 0,
 			expectedErr:      ErrCannotBeNull{"name"},
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 			},
 		},
 		{
@@ -237,7 +236,7 @@ func TestService_Create(t *testing.T) {
 			dataToExpect:     map[string]interface{}{"name": "name", "nullable_field": "not null"},
 			expectedInsertId: 0,
 			expectedErr:      fmt.Errorf("repository error"),
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, table string, validatedData map[string]interface{}) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, table string, validatedData map[string]interface{}) {
 				mr.EXPECT().Create(schema[table], validatedData).Return(0, fmt.Errorf("repository error"))
 			},
 		},
@@ -248,7 +247,7 @@ func TestService_Create(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			mockRepo := mock_repository.NewMockRecordManager(c)
+			mockRepo := repository.NewMockRecordManager(c)
 			recordManager := &RecordManager{
 				repo:   mockRepo,
 				dbe:    nil, ///??????????
@@ -272,12 +271,12 @@ func TestService_Create(t *testing.T) {
 func TestService_DeleteById(t *testing.T) {
 	testCases := []struct {
 		name          string
-		schema        internal.Schema
+		schema        dto.Schema
 		tableName     string
 		primaryKey    string
 		idToDelete    int
 		expectedErr   error
-		mockBehaviour func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int)
+		mockBehaviour func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int)
 	}{
 		{
 			name:        "OK",
@@ -286,7 +285,7 @@ func TestService_DeleteById(t *testing.T) {
 			primaryKey:  "primary_key",
 			idToDelete:  5,
 			expectedErr: nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int) {
 				mr.EXPECT().DeleteById(schema[tableName], primaryKey, id).Return(nil)
 			},
 		},
@@ -297,7 +296,7 @@ func TestService_DeleteById(t *testing.T) {
 			primaryKey:  "",
 			idToDelete:  0,
 			expectedErr: ErrTableNotFound,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int) {
 			},
 		},
 		{
@@ -307,7 +306,7 @@ func TestService_DeleteById(t *testing.T) {
 			primaryKey:  "primary_key",
 			idToDelete:  5,
 			expectedErr: ErrRecordNotFound,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int) {
 				mr.EXPECT().DeleteById(schema[tableName], primaryKey, id).Return(repository.ErrRowNotFound)
 			},
 		},
@@ -318,7 +317,7 @@ func TestService_DeleteById(t *testing.T) {
 			primaryKey:  "primary_key",
 			idToDelete:  5,
 			expectedErr: fmt.Errorf("repository error"),
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int) {
 				mr.EXPECT().DeleteById(schema[tableName], primaryKey, id).Return(fmt.Errorf("repository error"))
 			},
 		},
@@ -329,7 +328,7 @@ func TestService_DeleteById(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			mockRepo := mock_repository.NewMockRecordManager(c)
+			mockRepo := repository.NewMockRecordManager(c)
 			recordManager := &RecordManager{
 				repo:   mockRepo,
 				dbe:    nil, ///??????????
@@ -352,7 +351,7 @@ func TestService_DeleteById(t *testing.T) {
 func TestService_GetAllRecords(t *testing.T) {
 	testCases := []struct {
 		name          string
-		schema        internal.Schema
+		schema        dto.Schema
 		tableName     string
 		limit         int
 		offset        int
@@ -360,7 +359,7 @@ func TestService_GetAllRecords(t *testing.T) {
 		errorToReturn error
 		expectedErr   error
 		expectedData  string
-		mockBehaviour func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error)
+		mockBehaviour func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error)
 	}{
 		{
 			name:          "OK",
@@ -372,7 +371,7 @@ func TestService_GetAllRecords(t *testing.T) {
 			errorToReturn: nil,
 			expectedErr:   nil,
 			expectedData:  serializedExampleData,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().GetAllRecords(schema[tableName], limit, offset).Return(data, errorToReturn)
 			},
 		},
@@ -386,7 +385,7 @@ func TestService_GetAllRecords(t *testing.T) {
 			errorToReturn: nil,
 			expectedErr:   nil,
 			expectedData:  serializedExampleDataWithNull,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().GetAllRecords(schema[tableName], limit, offset).Return(data, errorToReturn)
 			},
 		},
@@ -398,7 +397,7 @@ func TestService_GetAllRecords(t *testing.T) {
 			offset:       0,
 			expectedErr:  ErrTableNotFound,
 			expectedData: "",
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
 			},
 		},
 		{
@@ -411,7 +410,7 @@ func TestService_GetAllRecords(t *testing.T) {
 			errorToReturn: fmt.Errorf("repository error"),
 			expectedErr:   fmt.Errorf("repository error"),
 			expectedData:  "",
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, limit int, offset int, data []map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().GetAllRecords(schema[tableName], limit, offset).Return(data, errorToReturn)
 			},
 		},
@@ -422,7 +421,7 @@ func TestService_GetAllRecords(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			mockRepo := mock_repository.NewMockRecordManager(c)
+			mockRepo := repository.NewMockRecordManager(c)
 			recordManager := &RecordManager{
 				repo:   mockRepo,
 				dbe:    nil,
@@ -446,7 +445,7 @@ func TestService_GetAllRecords(t *testing.T) {
 func TestService_GetById(t *testing.T) {
 	testCases := []struct {
 		name          string
-		schema        internal.Schema
+		schema        dto.Schema
 		tableName     string
 		primaryKey    string
 		id            int
@@ -454,7 +453,7 @@ func TestService_GetById(t *testing.T) {
 		errorToReturn error
 		expectedErr   error
 		expectedData  string
-		mockBehaviour func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error)
+		mockBehaviour func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error)
 	}{
 		{
 			name:          "OK",
@@ -466,7 +465,7 @@ func TestService_GetById(t *testing.T) {
 			errorToReturn: nil,
 			expectedErr:   nil,
 			expectedData:  serializedExampleSingleData,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().GetById(schema[tableName], primaryKey, id).Return(data, errorToReturn)
 			},
 		},
@@ -477,7 +476,7 @@ func TestService_GetById(t *testing.T) {
 			id:           3,
 			expectedErr:  ErrTableNotFound,
 			expectedData: "",
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 			},
 		},
 		{
@@ -490,7 +489,7 @@ func TestService_GetById(t *testing.T) {
 			errorToReturn: repository.ErrRowNotFound,
 			expectedErr:   ErrRecordNotFound,
 			expectedData:  "",
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().GetById(schema[tableName], primaryKey, id).Return(data, errorToReturn)
 			},
 		},
@@ -504,7 +503,7 @@ func TestService_GetById(t *testing.T) {
 			errorToReturn: fmt.Errorf("repository error"),
 			expectedErr:   fmt.Errorf("repository error"),
 			expectedData:  "",
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().GetById(schema[tableName], primaryKey, id).Return(data, errorToReturn)
 			},
 		},
@@ -515,7 +514,7 @@ func TestService_GetById(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			mockRepo := mock_repository.NewMockRecordManager(c)
+			mockRepo := repository.NewMockRecordManager(c)
 			recordManager := &RecordManager{
 				repo:   mockRepo,
 				dbe:    nil,
@@ -539,7 +538,7 @@ func TestService_GetById(t *testing.T) {
 func TestService_UpdateById(t *testing.T) {
 	testCases := []struct {
 		name          string
-		schema        internal.Schema
+		schema        dto.Schema
 		tableName     string
 		primaryKey    string
 		id            int
@@ -547,7 +546,7 @@ func TestService_UpdateById(t *testing.T) {
 		dataToExpect  map[string]interface{}
 		errorToReturn error
 		expectedErr   error
-		mockBehaviour func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error)
+		mockBehaviour func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error)
 	}{
 		{
 			name:          "OK",
@@ -559,7 +558,7 @@ func TestService_UpdateById(t *testing.T) {
 			dataToExpect:  map[string]interface{}{"name": "updated name"},
 			errorToReturn: nil,
 			expectedErr:   nil,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().UpdateById(schema[tableName], primaryKey, id, data).Return(errorToReturn)
 			},
 		},
@@ -571,7 +570,7 @@ func TestService_UpdateById(t *testing.T) {
 			inputData:     map[string]string{"unknown_field": "value"},
 			errorToReturn: nil,
 			expectedErr:   fmt.Errorf("missing data to update"),
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 			},
 		},
 		{
@@ -581,7 +580,7 @@ func TestService_UpdateById(t *testing.T) {
 			id:          3,
 			inputData:   map[string]string{"name": "updated name"},
 			expectedErr: ErrTableNotFound,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 			},
 		},
 		{
@@ -594,7 +593,7 @@ func TestService_UpdateById(t *testing.T) {
 			dataToExpect:  map[string]interface{}{"name": "updated name"},
 			errorToReturn: repository.ErrRowNotFound,
 			expectedErr:   ErrRecordNotFound,
-			mockBehaviour: func(mr *mock_repository.MockRecordManager, schema internal.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
+			mockBehaviour: func(mr *repository.MockRecordManager, schema dto.Schema, tableName string, primaryKey string, id int, data map[string]interface{}, errorToReturn error) {
 				mr.EXPECT().UpdateById(schema[tableName], primaryKey, id, data).Return(errorToReturn)
 			},
 		},
@@ -605,7 +604,7 @@ func TestService_UpdateById(t *testing.T) {
 			c := gomock.NewController(t)
 			defer c.Finish()
 
-			mockRepo := mock_repository.NewMockRecordManager(c)
+			mockRepo := repository.NewMockRecordManager(c)
 			recordManager := &RecordManager{
 				repo:   mockRepo,
 				dbe:    nil,

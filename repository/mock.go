@@ -2,10 +2,10 @@
 // Source: repository.go
 
 // Package mock_repository is a generated GoMock package.
-package mock_repository
+package repository
 
 import (
-	internal "hw6coursera/internal"
+	dto "hw6coursera/dto"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -35,10 +35,10 @@ func (m *MockExplorer) EXPECT() *MockExplorerMockRecorder {
 }
 
 // GetColumns mocks base method.
-func (m *MockExplorer) GetColumns(tableName string) ([]internal.Column, error) {
+func (m *MockExplorer) GetColumns(tableName string) ([]dto.Column, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetColumns", tableName)
-	ret0, _ := ret[0].([]internal.Column)
+	ret0, _ := ret[0].([]dto.Column)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -88,7 +88,7 @@ func (m *MockRecordManager) EXPECT() *MockRecordManagerMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockRecordManager) Create(table internal.Table, data map[string]interface{}) (int, error) {
+func (m *MockRecordManager) Create(table dto.Table, data map[string]interface{}) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", table, data)
 	ret0, _ := ret[0].(int)
@@ -103,7 +103,7 @@ func (mr *MockRecordManagerMockRecorder) Create(table, data interface{}) *gomock
 }
 
 // DeleteById mocks base method.
-func (m *MockRecordManager) DeleteById(table internal.Table, primaryKey string, id int) error {
+func (m *MockRecordManager) DeleteById(table dto.Table, primaryKey string, id int) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteById", table, primaryKey, id)
 	ret0, _ := ret[0].(error)
@@ -117,7 +117,7 @@ func (mr *MockRecordManagerMockRecorder) DeleteById(table, primaryKey, id interf
 }
 
 // GetAllRecords mocks base method.
-func (m *MockRecordManager) GetAllRecords(table internal.Table, limit, offset int) ([]map[string]interface{}, error) {
+func (m *MockRecordManager) GetAllRecords(table dto.Table, limit, offset int) ([]map[string]interface{}, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAllRecords", table, limit, offset)
 	ret0, _ := ret[0].([]map[string]interface{})
@@ -132,7 +132,7 @@ func (mr *MockRecordManagerMockRecorder) GetAllRecords(table, limit, offset inte
 }
 
 // GetById mocks base method.
-func (m *MockRecordManager) GetById(table internal.Table, primaryKey string, id int) (map[string]interface{}, error) {
+func (m *MockRecordManager) GetById(table dto.Table, primaryKey string, id int) (map[string]interface{}, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetById", table, primaryKey, id)
 	ret0, _ := ret[0].(map[string]interface{})
@@ -147,7 +147,7 @@ func (mr *MockRecordManagerMockRecorder) GetById(table, primaryKey, id interface
 }
 
 // UpdateById mocks base method.
-func (m *MockRecordManager) UpdateById(table internal.Table, primaryKey string, id int, data map[string]interface{}) error {
+func (m *MockRecordManager) UpdateById(table dto.Table, primaryKey string, id int, data map[string]interface{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateById", table, primaryKey, id, data)
 	ret0, _ := ret[0].(error)

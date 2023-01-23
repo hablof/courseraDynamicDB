@@ -2,7 +2,7 @@
 // Source: service.go
 
 // Package mock_service is a generated GoMock package.
-package mock_service
+package service
 
 import (
 	reflect "reflect"

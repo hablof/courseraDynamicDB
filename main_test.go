@@ -60,8 +60,7 @@ func prepareTestApis(db *sql.DB) error {
 	}
 
 	for _, q := range qs {
-		_, err := db.Exec(q)
-		if err != nil {
+		if _, err := db.Exec(q); err != nil {
 			return err
 		}
 	}
@@ -74,8 +73,7 @@ func cleanupTestApis(db *sql.DB) error {
 		"DROP TABLE IF EXISTS users_test;",
 	}
 	for _, q := range qs {
-		_, err := db.Exec(q)
-		if err != nil {
+		if _, err := db.Exec(q); err != nil {
 			return err
 		}
 	}
@@ -174,6 +172,16 @@ func TestApis(t *testing.T) {
 	}
 	updatedVasiliyBytes, _ := json.MarshalIndent(updatedVasiliy, "", "    ")
 	updatedVasiliyString := string(updatedVasiliyBytes)
+
+	sqlGuy := map[string]interface{}{
+		"user_id":  3,
+		"login":    "petya",
+		"password": "pass",
+		"email":    "pochta@yandex.ru",
+		"info":     "info); DELETE FROM table WHERE 1=1; now(",
+	}
+	sqlGuyBytes, _ := json.MarshalIndent(sqlGuy, "", "    ")
+	sqlGuyString := string(sqlGuyBytes)
 
 	// users := []map[string]interface{}{
 	// 	{
@@ -395,8 +403,26 @@ func TestApis(t *testing.T) {
 			expectedResponseBody: "last insert id 2",
 		},
 		{
+			name:   "SQL injection pro",
+			path:   "/users_test/",
+			method: http.MethodPut,
+			requestBody: map[string]string{
+				"login":    "petya",
+				"password": "pass",
+				"email":    "pochta@yandex.ru",
+				"info":     "info); DELETE FROM table WHERE 1=1; now(",
+			},
+			expectedResponseBody: "last insert id 3",
+		},
+		{
+			name:                 "check injections",
+			path:                 "/users_test/3",
+			expectedResponseBody: sqlGuyString,
+			// expectedResponseBody: "[]",
+		},
+		{
 			name:                   "user not found",
-			path:                   "/users_test/3",
+			path:                   "/users_test/4",
 			expectedResponseStatus: http.StatusNotFound,
 			expectedResponseBody:   "record not found",
 		},

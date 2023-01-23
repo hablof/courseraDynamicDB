@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"hw6coursera/internal"
+	"hw6coursera/dto"
 	"log"
 	"strconv"
 	"strings"
@@ -16,7 +16,7 @@ type recordManager struct {
 }
 
 // Create implements RecordManager
-func (rm *recordManager) Create(table internal.Table, data map[string]interface{}) (lastInsertedId int, err error) {
+func (rm *recordManager) Create(table dto.Table, data map[string]interface{}) (lastInsertedId int, err error) {
 	fields, placehoders, sqlVals := getInsertParams(data)
 	queryTemplate := "INSERT INTO %s (%s) VALUES (%s);"
 	queryString := fmt.Sprintf(queryTemplate, table.Name, fields, placehoders)
@@ -36,12 +36,13 @@ func (rm *recordManager) Create(table internal.Table, data map[string]interface{
 	lastInsertId, err := res.LastInsertId()
 	if err != nil {
 		log.Printf("error on LastInsertId(): %v", err)
+		return 0, err
 	}
 	return int(lastInsertId), nil
 }
 
 // DeleteById implements RecordManager
-func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id int) (err error) {
+func (rm *recordManager) DeleteById(table dto.Table, primaryKey string, id int) (err error) {
 	queryTemplate := "DELETE FROM %s WHERE %s = ?;"
 	queryString := fmt.Sprintf(queryTemplate, table.Name, primaryKey)
 	res, err := rm.db.Exec(queryString, id)
@@ -62,7 +63,7 @@ func (rm *recordManager) DeleteById(table internal.Table, primaryKey string, id 
 }
 
 // GetAllRecords implements RecordManager
-func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset int) (data []map[string]interface{}, err error) {
+func (rm *recordManager) GetAllRecords(table dto.Table, limit int, offset int) (data []map[string]interface{}, err error) {
 	fields := getQueryFields(table)
 	queryTemplate := "SELECT %s FROM %s LIMIT ? OFFSET ?;"
 	queryString := fmt.Sprintf(queryTemplate, fields, table.Name)
@@ -70,12 +71,7 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 	if err != nil {
 		return nil, fmt.Errorf("unable to get records due to error: %+v", err)
 	}
-	defer func() {
-		err := rows.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}()
+	defer rows.Close()
 
 	content := make([]map[string]interface{}, 0)
 	dest := initScanDestination(table)
@@ -93,7 +89,7 @@ func (rm *recordManager) GetAllRecords(table internal.Table, limit int, offset i
 }
 
 // GetById implements RecordManager
-func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int) (data map[string]interface{}, err error) {
+func (rm *recordManager) GetById(table dto.Table, primaryKey string, id int) (data map[string]interface{}, err error) {
 	fields := getQueryFields(table)
 	queryTemplate := "SELECT %s FROM %s WHERE %s = ?;"
 	queryString := fmt.Sprintf(queryTemplate, fields, table.Name, primaryKey)
@@ -116,7 +112,7 @@ func (rm *recordManager) GetById(table internal.Table, primaryKey string, id int
 }
 
 // UpdateById implements RecordManager
-func (rm *recordManager) UpdateById(table internal.Table, primaryKey string, id int, data map[string]interface{}) (err error) {
+func (rm *recordManager) UpdateById(table dto.Table, primaryKey string, id int, data map[string]interface{}) (err error) {
 	palceholders, sqlVals := getUpdateParams(data)
 	if len(sqlVals) == 0 {
 		return fmt.Errorf("required at least one field to update")
@@ -174,7 +170,7 @@ func getUpdateParams(unit map[string]interface{}) (placehoderStr string, data []
 }
 
 // копипаста функции strings.Join только для моей структуры table
-func getQueryFields(t internal.Table) string {
+func getQueryFields(t dto.Table) string {
 	switch len(t.Columns) {
 	case 0:
 		return ""
@@ -190,7 +186,7 @@ func getQueryFields(t internal.Table) string {
 	return sb.String()
 }
 
-func initScanDestination(t internal.Table) []interface{} {
+func initScanDestination(t dto.Table) []interface{} {
 	a := make([]interface{}, len(t.Columns))
 	for i := range a {
 		a[i] = new(interface{})
@@ -198,7 +194,7 @@ func initScanDestination(t internal.Table) []interface{} {
 	return a
 }
 
-func extractSqlVals(tableStruct internal.Table, dest []interface{}) (map[string]interface{}, error) {
+func extractSqlVals(tableStruct dto.Table, dest []interface{}) (map[string]interface{}, error) {
 	unit := make(map[string]interface{})
 	for i, c := range tableStruct.Columns {
 		ptrToInterface, ok := dest[i].(*interface{}) //т.к. dest[i] это указатель на interface{} (см. func initScanDestination)
@@ -210,7 +206,7 @@ func extractSqlVals(tableStruct internal.Table, dest []interface{}) (map[string]
 		switch value := scannedValue.(type) {
 		case []byte: // байты преобразуем в строку...
 			str := string(value)
-			if c.ColumnType == internal.FloatType { // отдадим в json число, а не строку с числом
+			if c.ColumnType == dto.FloatType { // отдадим в json число, а не строку с числом
 				floatValue, err := strconv.ParseFloat(str, 64)
 				if err != nil {
 					return nil, fmt.Errorf("parse float error: %v", err)
